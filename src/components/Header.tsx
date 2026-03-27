@@ -46,10 +46,16 @@ export default function Header() {
             검색
           </Link>
           <Link
-            href="#"
+            href="/auth/login"
+            className="rounded-lg border border-card-border px-4 py-2 text-sm text-muted transition-colors hover:border-accent hover:text-accent"
+          >
+            로그인
+          </Link>
+          <Link
+            href="/auth/signup"
             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-accent-hover"
           >
-            업소 등록
+            회원가입
           </Link>
         </div>
 
@@ -84,12 +90,28 @@ export default function Header() {
             검색
           </Link>
           <Link
-            href="#"
-            className="mt-2 block rounded-lg bg-accent px-3 py-3 text-center text-sm font-medium text-black"
+            href="/mypage"
+            className="block rounded-lg px-3 py-3 text-sm text-muted"
             onClick={() => setMobileOpen(false)}
           >
-            업소 등록
+            마이페이지
           </Link>
+          <div className="mt-2 flex gap-2">
+            <Link
+              href="/auth/login"
+              className="flex-1 rounded-lg border border-card-border py-3 text-center text-sm text-muted"
+              onClick={() => setMobileOpen(false)}
+            >
+              로그인
+            </Link>
+            <Link
+              href="/auth/signup"
+              className="flex-1 rounded-lg bg-accent py-3 text-center text-sm font-medium text-black"
+              onClick={() => setMobileOpen(false)}
+            >
+              회원가입
+            </Link>
+          </div>
         </nav>
       )}
     </header>
