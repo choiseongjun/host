@@ -10,8 +10,9 @@
     "lint": "eslint",
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "npx tsx scripts/seed.ts",
-    "db:crawl": "npx tsx scripts/crawl-naver.ts",
-    "db:crawl:naver": "npx tsx scripts/crawl-naver.ts naver",
+    "db:crawl": "npx tsx scripts/crawl-naver.ts crawl",
+    "db:crawl:dry": "npx tsx scripts/crawl-naver.ts crawl --dry",
+    "db:crawl:api": "npx tsx scripts/crawl-naver.ts naver",
     "db:studio": "npx prisma studio"
   },
   "dependencies": {

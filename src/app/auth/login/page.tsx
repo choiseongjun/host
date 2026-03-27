@@ -2,9 +2,31 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [loginType, setLoginType] = useState<"user" | "business">("user");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin() {
+    setError("");
+    setLoading(true);
+    try {
+      const data = await api.auth.login({ username, password });
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      router.push("/mypage");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="flex min-h-[calc(100vh-64px)] items-center justify-center px-4 py-16">
@@ -51,6 +73,8 @@ export default function LoginPage() {
               <input
                 type="text"
                 placeholder={loginType === "user" ? "이메일 또는 아이디 입력" : "사업자 이메일 입력"}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className="mt-1.5 w-full rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
               />
             </div>
@@ -59,9 +83,13 @@ export default function LoginPage() {
               <input
                 type="password"
                 placeholder="비밀번호 입력"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                 className="mt-1.5 w-full rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
               />
             </div>
+            {error && <p className="text-sm text-red-400">{error}</p>}
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm text-muted">
@@ -73,8 +101,8 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <button className="w-full rounded-xl bg-accent py-3 text-sm font-medium text-black transition-colors hover:bg-accent-hover">
-              로그인
+            <button onClick={handleLogin} disabled={loading} className="w-full rounded-xl bg-accent py-3 text-sm font-medium text-black transition-colors hover:bg-accent-hover disabled:opacity-50">
+              {loading ? "로그인 중..." : "로그인"}
             </button>
           </div>
 
