@@ -126,6 +126,52 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
               </dl>
             </section>
 
+            {/* Menu & Price */}
+            <section className="rounded-xl border border-card-border bg-card-bg p-6">
+              <h2 className="text-lg font-bold text-foreground">메뉴 / 가격</h2>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <h3 className="text-xs font-medium text-accent">시그니처 칵테일</h3>
+                  <div className="mt-2 space-y-2">
+                    {[
+                      { name: "문라이트", price: "25,000원", desc: "진, 블루큐라소, 라임, 토닉워터", popular: true },
+                      { name: "선셋 블러쉬", price: "22,000원", desc: "럼, 패션프루트, 코코넛크림", popular: false },
+                      { name: "미드나잇 가든", price: "28,000원", desc: "보드카, 엘더플라워, 라벤더시럽", popular: true },
+                    ].map((item) => (
+                      <div key={item.name} className="flex items-center justify-between rounded-lg bg-zinc-900/30 px-4 py-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-foreground">{item.name}</span>
+                            {item.popular && <span className="rounded bg-red-500/20 px-1 py-0.5 text-[9px] text-red-400">인기</span>}
+                          </div>
+                          <p className="mt-0.5 text-[10px] text-muted">{item.desc}</p>
+                        </div>
+                        <span className="text-sm font-medium text-accent">{item.price}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xs font-medium text-accent">테이블 / 룸</h3>
+                  <div className="mt-2 space-y-2">
+                    {[
+                      { name: "일반 테이블", price: "50,000원", desc: "2인 기준" },
+                      { name: "루프탑 테이블", price: "100,000원", desc: "2인 기준, 예약 필수" },
+                      { name: "프라이빗 룸", price: "200,000원~", desc: "4인부터, 2시간 기준" },
+                    ].map((item) => (
+                      <div key={item.name} className="flex items-center justify-between rounded-lg bg-zinc-900/30 px-4 py-3">
+                        <div>
+                          <span className="text-sm text-foreground">{item.name}</span>
+                          <p className="mt-0.5 text-[10px] text-muted">{item.desc}</p>
+                        </div>
+                        <span className="text-sm font-medium text-accent">{item.price}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+
             {/* Rating Breakdown */}
             <section className="rounded-xl border border-card-border bg-card-bg p-6">
               <h2 className="text-lg font-bold text-foreground">평가 항목</h2>

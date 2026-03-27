@@ -10,6 +10,8 @@ const menuItems = [
   { name: "내 리뷰", href: "/mypage/reviews", icon: "✍️" },
   { name: "내 구인구직", href: "/mypage/jobs", icon: "💼" },
   { name: "업소 관리", href: "/mypage/venue", icon: "🏢" },
+  { name: "메뉴 관리", href: "/mypage/venue/menu", icon: "📋" },
+  { name: "가격표 관리", href: "/mypage/venue/price", icon: "💰" },
 ];
 
 export default function MypageSidebar() {
