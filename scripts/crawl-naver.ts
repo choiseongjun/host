@@ -1,22 +1,27 @@
 /**
- * 네이버 업소 데이터 + 이미지 크롤링 스크립트
+ * 네이버 업소 데이터 + 이미지 크롤링 스크립트 (S3 업로드)
  *
  * 사용법:
  *   npx tsx scripts/crawl-naver.ts              → 수동 데이터 10개 (DB만 필요)
- *   npx tsx scripts/crawl-naver.ts crawl        → 네이버 지도 크롤링 (API 키 불필요!)
- *   npx tsx scripts/crawl-naver.ts crawl --dry   → 크롤링 미리보기 (DB 저장 안 함)
- *   npx tsx scripts/crawl-naver.ts naver        → 네이버 공식 API (키 필요)
+ *   npx tsx scripts/crawl-naver.ts naver        → 네이버 API 크롤링 + S3 업로드
+ *   npx tsx scripts/crawl-naver.ts naver --dry  → 미리보기
+ *   npx tsx scripts/crawl-naver.ts migrate-s3   → 로컬 이미지 → S3 마이그레이션
  *
  * 환경변수 (.env):
- *   DATABASE_URL          - PostgreSQL 연결 문자열 (필수)
- *   NAVER_CLIENT_ID       - naver 모드에서만 필요
- *   NAVER_CLIENT_SECRET   - naver 모드에서만 필요
+ *   DATABASE_URL           - PostgreSQL (필수)
+ *   NAVER_CLIENT_ID        - 네이버 API
+ *   NAVER_CLIENT_SECRET    - 네이버 API
+ *   AWS_S3_BUCKET          - S3 버킷명
+ *   AWS_REGION             - AWS 리전
+ *   AWS_ACCESS_KEY_ID      - AWS 키
+ *   AWS_SECRET_ACCESS_KEY  - AWS 시크릿
  */
 
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { S3Client, PutObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import * as fs from "fs";
 import * as path from "path";
 import * as https from "https";
@@ -30,7 +35,21 @@ const NAVER_CLIENT_ID = process.env.NAVER_CLIENT_ID || "";
 const NAVER_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET || "";
 const DRY_RUN = process.argv.includes("--dry");
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "venues");
+const S3_BUCKET = process.env.AWS_S3_BUCKET || "crewcheck-prod";
+const S3_REGION = process.env.AWS_REGION || "ap-northeast-2";
+const S3_PREFIX = "venues"; // S3 key prefix: venues/{slug}/1.jpg
+
+const s3 = new S3Client({
+  region: S3_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+  },
+});
+
+function s3Url(key: string): string {
+  return `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${key}`;
+}
 
 // ══════════════════════════════════════════
 // 공통 타입 & 유틸
@@ -125,12 +144,12 @@ function inferFacilities(text: string): string[] {
 }
 
 // ══════════════════════════════════════════
-// 이미지 다운로드 (공통)
+// 이미지 다운로드 → S3 업로드
 // ══════════════════════════════════════════
 
-function downloadFile(url: string, dest: string, maxRedirects = 3): Promise<boolean> {
+function downloadToBuffer(url: string, maxRedirects = 3): Promise<{ buffer: Buffer; contentType: string } | null> {
   return new Promise((resolve) => {
-    if (maxRedirects <= 0) { resolve(false); return; }
+    if (maxRedirects <= 0) { resolve(null); return; }
     const protocol = url.startsWith("https") ? https : http;
 
     const req = protocol.get(url, {
@@ -138,22 +157,22 @@ function downloadFile(url: string, dest: string, maxRedirects = 3): Promise<bool
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
     }, (res) => {
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        resolve(downloadFile(res.headers.location, dest, maxRedirects - 1));
+        resolve(downloadToBuffer(res.headers.location, maxRedirects - 1));
         return;
       }
-      if (res.statusCode !== 200) { resolve(false); return; }
+      if (res.statusCode !== 200) { resolve(null); return; }
 
-      const contentType = res.headers["content-type"] || "";
-      if (!contentType.startsWith("image/")) { resolve(false); return; }
+      const contentType = res.headers["content-type"] || "image/jpeg";
+      if (!contentType.startsWith("image/")) { resolve(null); return; }
 
-      const file = fs.createWriteStream(dest);
-      res.pipe(file);
-      file.on("finish", () => { file.close(); resolve(true); });
-      file.on("error", () => { fs.unlink(dest, () => {}); resolve(false); });
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      res.on("end", () => resolve({ buffer: Buffer.concat(chunks), contentType }));
+      res.on("error", () => resolve(null));
     });
 
-    req.on("error", () => resolve(false));
-    req.on("timeout", () => { req.destroy(); resolve(false); });
+    req.on("error", () => resolve(null));
+    req.on("timeout", () => { req.destroy(); resolve(null); });
   });
 }
 
@@ -167,32 +186,52 @@ function getImageExt(url: string): string {
   return ".jpg";
 }
 
-async function downloadImages(imageUrls: string[], venueSlug: string, maxCount = 5): Promise<string[]> {
-  if (!imageUrls.length) return [];
+function contentTypeFromExt(ext: string): string {
+  const map: Record<string, string> = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif" };
+  return map[ext] || "image/jpeg";
+}
 
-  const venueDir = path.join(UPLOAD_DIR, venueSlug);
-  if (!fs.existsSync(venueDir)) fs.mkdirSync(venueDir, { recursive: true });
+async function s3Exists(key: string): Promise<boolean> {
+  try {
+    await s3.send(new HeadObjectCommand({ Bucket: S3_BUCKET, Key: key }));
+    return true;
+  } catch { return false; }
+}
+
+async function uploadImagesToS3(imageUrls: string[], venueSlug: string, maxCount = 5): Promise<string[]> {
+  if (!imageUrls.length) return [];
 
   const saved: string[] = [];
   for (const imgUrl of imageUrls) {
     if (saved.length >= maxCount) break;
 
     const ext = getImageExt(imgUrl);
-    const filename = `${saved.length + 1}${ext}`;
-    const destPath = path.join(venueDir, filename);
-    const webPath = `/uploads/venues/${venueSlug}/${filename}`;
+    const s3Key = `${S3_PREFIX}/${venueSlug}/${saved.length + 1}${ext}`;
 
-    if (fs.existsSync(destPath)) {
-      saved.push(webPath);
+    // S3에 이미 있으면 스킵
+    if (await s3Exists(s3Key)) {
+      saved.push(s3Url(s3Key));
       continue;
     }
 
-    const ok = await downloadFile(imgUrl, destPath);
-    if (ok) {
-      saved.push(webPath);
-      console.log(`      📷 [${saved.length}/${maxCount}] 저장 완료`);
+    const result = await downloadToBuffer(imgUrl);
+    if (!result) continue;
+
+    try {
+      await s3.send(new PutObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: s3Key,
+        Body: result.buffer,
+        ContentType: result.contentType,
+        CacheControl: "public, max-age=31536000",
+      }));
+      saved.push(s3Url(s3Key));
+      console.log(`      📷 [${saved.length}/${maxCount}] S3 업로드 완료`);
+    } catch (err) {
+      console.error(`      ❌ S3 업로드 실패:`, (err as Error).message);
     }
-    await sleep(200);
+
+    await sleep(100);
   }
   return saved;
 }
@@ -202,7 +241,6 @@ async function downloadImages(imageUrls: string[], venueSlug: string, maxCount =
 // ══════════════════════════════════════════
 
 async function saveVenue(data: VenueData): Promise<"saved" | "skipped" | "images_added"> {
-  // 중복 체크
   const existing = await prisma.venue.findFirst({
     where: {
       OR: [
@@ -213,20 +251,14 @@ async function saveVenue(data: VenueData): Promise<"saved" | "skipped" | "images
   });
 
   if (existing) {
-    // 기존 업소에 이미지가 없으면 추가
     if (existing.images.length === 0 && data.images.length > 0) {
-      await prisma.venue.update({
-        where: { id: existing.id },
-        data: { images: data.images },
-      });
+      await prisma.venue.update({ where: { id: existing.id }, data: { images: data.images } });
       return "images_added";
     }
     return "skipped";
   }
 
-  await prisma.venue.create({
-    data: { ...data, isApproved: true },
-  });
+  await prisma.venue.create({ data: { ...data, isApproved: true } });
   return "saved";
 }
 
@@ -259,6 +291,50 @@ const CATEGORY_KEYWORDS: { keywords: string[]; categorySlug: string; category: s
 
 interface SearchQuery { keyword: string; categorySlug: string; category: string; }
 
+// 네이버 category 필드 기반 필터링
+// 카테고리 슬러그별로 허용하는 네이버 카테고리 키워드
+const ALLOWED_NAVER_CATEGORIES: Record<string, string[]> = {
+  "bar-lounge": ["술집", "바", "라운지", "펍", "호프", "와인바", "칵테일", "위스키", "이자카야", "주점", "포차"],
+  "club": ["클럽", "나이트", "댄스"],
+  "karaoke": ["노래방", "노래", "코인노래"],
+  "massage": ["마사지", "스파", "안마", "테라피", "힐링", "사우나", "찜질"],
+  "host-bar": ["술집", "바", "호스트", "주점"],
+  "middle-age-karaoke": ["노래방", "노래"],
+};
+
+// 무조건 제외할 카테고리
+const BLOCKED_NAVER_CATEGORIES = [
+  "베이커리", "빵", "카페", "디저트", "금매매", "금거래", "쇼핑", "유통",
+  "부동산", "학원", "병원", "의원", "약국", "은행", "보험",
+  "세탁", "미용실", "헤어", "네일", "피부과", "성형",
+  "편의점", "마트", "슈퍼", "문구", "서점", "주유소",
+  "숙박", "모텔", "호텔", "게스트하우스",
+  "스테이크", "한식", "중식", "일식", "양식", "분식", "패스트푸드",
+  "치킨", "피자", "햄버거", "국수", "냉면", "삼겹살", "곱창", "족발",
+  "고기", "구이", "갈비", "보쌈", "찌개", "탕", "국밥",
+  "초밥", "돈까스", "라멘", "우동", "떡볶이",
+];
+
+function isRelevantVenue(naverCategory: string, targetSlug: string): boolean {
+  const catLower = naverCategory.toLowerCase();
+
+  // 차단 목록 체크
+  for (const blocked of BLOCKED_NAVER_CATEGORIES) {
+    if (catLower.includes(blocked)) return false;
+  }
+
+  // 허용 목록 체크
+  const allowed = ALLOWED_NAVER_CATEGORIES[targetSlug];
+  if (!allowed) return true;
+
+  for (const kw of allowed) {
+    if (catLower.includes(kw)) return true;
+  }
+
+  // 허용 목록에도 차단 목록에도 안 걸리면 → 제외 (안전하게)
+  return false;
+}
+
 function buildSearchQueries(): SearchQuery[] {
   const queries: SearchQuery[] = [];
   for (const cat of CATEGORY_KEYWORDS) {
@@ -272,222 +348,13 @@ function buildSearchQueries(): SearchQuery[] {
 }
 
 // ══════════════════════════════════════════
-// 모드 1: 네이버 지도 크롤링 (API 키 불필요!)
-// ══════════════════════════════════════════
-
-const BROWSER_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-  "Accept": "application/json, text/plain, */*",
-  "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
-  "Referer": "https://map.naver.com/",
-};
-
-interface NaverPlaceItem {
-  id: string;
-  name: string;
-  address: string;
-  roadAddress: string;
-  tel: string;
-  category: string[];
-  x: string;
-  y: string;
-  thumUrl?: string;
-  businessHours?: string;
-  bizhourInfo?: string;
-  microReview?: string;
-}
-
-interface NaverPlaceDetail {
-  id: string;
-  name: string;
-  address: string;
-  roadAddress: string;
-  tel: string;
-  category: string[];
-  businessHours?: { status?: { text?: string }; list?: { day?: string; businessHours?: { start?: string; end?: string } }[] };
-  imageURL?: string[];
-  images?: { url?: string }[];
-  description?: string;
-  microReview?: string;
-}
-
-async function fetchNaverPlace(url: string): Promise<unknown> {
-  try {
-    const res = await fetch(url, { headers: BROWSER_HEADERS });
-    if (res.status === 429) {
-      console.log("   ⏳ 요청 제한 - 3초 대기...");
-      await sleep(3000);
-      return fetchNaverPlace(url);
-    }
-    if (!res.ok) {
-      console.error(`   ❌ ${res.status} ${res.statusText}`);
-      return null;
-    }
-    return res.json();
-  } catch (err) {
-    console.error(`   ❌ 네트워크 에러:`, (err as Error).message);
-    return null;
-  }
-}
-
-async function searchNaverPlace(query: string): Promise<NaverPlaceItem[]> {
-  // 네이버 지도 내부 검색 API (키 불필요)
-  const url = `https://map.naver.com/p/api/search/allSearch?query=${encodeURIComponent(query)}&type=all&searchCoord=126.9783882%3B37.5666103&boundary=`;
-  const data = await fetchNaverPlace(url) as { result?: { place?: { list?: NaverPlaceItem[] } } } | null;
-
-  if (!data?.result?.place?.list) return [];
-  return data.result.place.list;
-}
-
-async function getPlaceDetail(placeId: string): Promise<NaverPlaceDetail | null> {
-  const url = `https://map.naver.com/p/api/sites/summary/${placeId}?lang=ko`;
-  const data = await fetchNaverPlace(url) as NaverPlaceDetail | null;
-  return data;
-}
-
-async function getPlacePhotos(placeId: string): Promise<string[]> {
-  // 업체 사진 목록 API
-  const url = `https://map.naver.com/p/api/sites/summary/${placeId}/photo?page=1&size=10&lang=ko`;
-  const data = await fetchNaverPlace(url) as { photoList?: { list?: { photoUrl?: string; orgPhotoUrl?: string }[] } } | null;
-
-  if (!data?.photoList?.list) return [];
-  return data.photoList.list
-    .map((p) => p.orgPhotoUrl || p.photoUrl || "")
-    .filter(Boolean);
-}
-
-function parseBusinessHours(detail: NaverPlaceDetail): string {
-  if (!detail.businessHours?.list?.length) return "";
-  const items = detail.businessHours.list;
-  // 영업시간 텍스트 생성
-  const first = items[0];
-  if (first?.businessHours?.start && first?.businessHours?.end) {
-    return `${first.businessHours.start} - ${first.businessHours.end}`;
-  }
-  return detail.businessHours?.status?.text || "";
-}
-
-async function crawlNaverPlace() {
-  if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-  const queries = buildSearchQueries();
-  console.log(`🕷️  네이버 지도 크롤링 시작 (${queries.length}개 쿼리)${DRY_RUN ? " [DRY RUN]" : ""}\n`);
-
-  let stats = { saved: 0, skipped: 0, images: 0, errors: 0 };
-  const seenIds = new Set<string>();
-
-  for (let qi = 0; qi < queries.length; qi++) {
-    const q = queries[qi];
-    const progress = `[${qi + 1}/${queries.length}]`;
-    process.stdout.write(`🔍 ${progress} "${q.keyword}" `);
-
-    const places = await searchNaverPlace(q.keyword);
-    if (!places.length) { console.log("→ 결과 없음"); await sleep(300); continue; }
-    console.log(`→ ${places.length}개 발견`);
-
-    for (const place of places) {
-      // 중복 스킵 (세션 내)
-      if (seenIds.has(place.id)) continue;
-      seenIds.add(place.id);
-
-      const address = place.roadAddress || place.address;
-      if (!address.includes("서울")) continue;
-
-      const name = stripHtml(place.name);
-      const { region, district } = extractRegionDistrict(address);
-      const sourceUrl = `https://map.naver.com/p/entry/place/${place.id}`;
-
-      if (DRY_RUN) {
-        console.log(`   📋 ${name} | ${region} ${district} | ${place.tel || "-"} | 📷 ${place.thumUrl ? "Y" : "N"}`);
-        stats.saved++;
-        continue;
-      }
-
-      // 상세 정보 가져오기
-      const detail = await getPlaceDetail(place.id);
-      await sleep(200);
-
-      // 사진 가져오기
-      let photoUrls: string[] = [];
-      const photoResult = await getPlacePhotos(place.id);
-      if (photoResult.length) {
-        photoUrls = photoResult;
-      } else if (place.thumUrl) {
-        // 썸네일이라도 사용
-        photoUrls = [place.thumUrl];
-      }
-      await sleep(200);
-
-      // 이미지 다운로드
-      const venueSlug = slugify(`${name}-${place.id}`);
-      const images = photoUrls.length > 0
-        ? await downloadImages(photoUrls, venueSlug, 5)
-        : [];
-      stats.images += images.length;
-
-      // 영업시간
-      const hours = detail ? parseBusinessHours(detail) : "";
-      const description = detail?.description
-        || detail?.microReview
-        || place.microReview
-        || `${region} ${district}에 위치한 ${q.category}`;
-      const naverCat = (place.category || []).join(" ");
-
-      const venueData: VenueData = {
-        name,
-        category: q.category,
-        categorySlug: q.categorySlug,
-        region,
-        district,
-        address,
-        phone: place.tel || "",
-        hours,
-        lateNight: inferLateNight(hours, q.category),
-        description: stripHtml(description),
-        tags: inferTags(name, q.category, description, naverCat),
-        facilities: inferFacilities(`${description} ${naverCat}`),
-        images,
-        priceLevel: inferPriceLevel(q.category),
-        sourceUrl,
-        sourceName: "naver-place",
-      };
-
-      const result = await saveVenue(venueData);
-      if (result === "saved") {
-        stats.saved++;
-        console.log(`   ✅ ${name} (${region} ${district}) - 📷 ${images.length}장`);
-      } else if (result === "images_added") {
-        stats.saved++;
-        console.log(`   🖼️  ${name} - 이미지 ${images.length}장 추가`);
-      } else {
-        stats.skipped++;
-      }
-    }
-
-    // 검색 쿼리 간 간격 (차단 방지)
-    await sleep(800);
-  }
-
-  console.log("\n" + "═".repeat(50));
-  console.log("🎉 크롤링 완료!");
-  console.log(`   업소 저장: ${stats.saved}개`);
-  console.log(`   중복 스킵: ${stats.skipped}개`);
-  console.log(`   이미지 총: ${stats.images}장`);
-  if (DRY_RUN) console.log("   ⚠️  DRY RUN 모드 - DB에 저장되지 않았습니다.");
-  console.log("═".repeat(50));
-}
-
-// ══════════════════════════════════════════
-// 모드 2: 네이버 공식 API (키 필요)
+// 네이버 공식 API 크롤링 → S3
 // ══════════════════════════════════════════
 
 async function naverApiFetch<T>(url: string): Promise<T | null> {
   try {
     const res = await fetch(url, {
-      headers: {
-        "X-Naver-Client-Id": NAVER_CLIENT_ID,
-        "X-Naver-Client-Secret": NAVER_CLIENT_SECRET,
-      },
+      headers: { "X-Naver-Client-Id": NAVER_CLIENT_ID, "X-Naver-Client-Secret": NAVER_CLIENT_SECRET },
     });
     if (res.status === 429) { await sleep(2000); return naverApiFetch(url); }
     if (!res.ok) { console.error(`   ❌ API 에러: ${res.status}`); return null; }
@@ -498,15 +365,11 @@ async function naverApiFetch<T>(url: string): Promise<T | null> {
 async function crawlNaverApi() {
   if (!NAVER_CLIENT_ID || !NAVER_CLIENT_SECRET) {
     console.error("❌ .env에 NAVER_CLIENT_ID, NAVER_CLIENT_SECRET을 설정하세요.");
-    console.log("   또는 'crawl' 모드를 사용하세요 (API 키 불필요):\n");
-    console.log("   npx tsx scripts/crawl-naver.ts crawl\n");
     process.exit(1);
   }
 
-  if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
   const queries = buildSearchQueries();
-  console.log(`🕷️  네이버 API 크롤링 시작 (${queries.length}개 쿼리)${DRY_RUN ? " [DRY RUN]" : ""}\n`);
+  console.log(`🕷️  네이버 API 크롤링 → S3 (${queries.length}개 쿼리)${DRY_RUN ? " [DRY RUN]" : ""}\n`);
 
   let stats = { saved: 0, skipped: 0, images: 0 };
   const seenNames = new Set<string>();
@@ -525,18 +388,26 @@ async function crawlNaverApi() {
         const address = item.roadAddress || item.address;
         if (!address.includes("서울")) continue;
 
+        // 카테고리 필터링 — 관련 없는 업종 제외
+        if (!isRelevantVenue(item.category, q.categorySlug)) {
+          console.log(`   ⛔ ${name} (${item.category}) — 업종 불일치, 스킵`);
+          continue;
+        }
+
         const dedupeKey = `${name}::${address}`;
         if (seenNames.has(dedupeKey)) continue;
         seenNames.add(dedupeKey);
 
         const { region, district } = extractRegionDistrict(address);
 
-        // 이미지 검색
-        const imgUrl = `https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(`${region} ${name}`)}&display=8&sort=sim&filter=large`;
+        // 이미지 검색 — "업소명 매장" 으로 검색해서 음식 사진 대신 매장 사진 우선
+        const imgQuery = `${name} ${q.category} 매장`;
+        const imgUrl = `https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(imgQuery)}&display=8&sort=sim&filter=large`;
         const imgResult = await naverApiFetch<{ items: { link: string }[] }>(imgUrl);
         const imageUrls = imgResult?.items?.map((i) => i.link) || [];
+
         const venueSlug = slugify(`${name}-${region}`);
-        const images = DRY_RUN ? [] : await downloadImages(imageUrls, venueSlug, 5);
+        const images = DRY_RUN ? [] : await uploadImagesToS3(imageUrls, venueSlug, 5);
         stats.images += images.length;
 
         const description = stripHtml(item.description) || `${region} ${district}에 위치한 ${q.category}`;
@@ -558,6 +429,7 @@ async function crawlNaverApi() {
         });
 
         if (result2 === "saved") { stats.saved++; console.log(`   ✅ ${name} (${region} ${district}) - 📷 ${images.length}장`); }
+        else if (result2 === "images_added") { console.log(`   🖼️  ${name} - 이미지 ${images.length}장 추가`); }
         else { stats.skipped++; }
       }
       await sleep(300);
@@ -566,12 +438,127 @@ async function crawlNaverApi() {
   }
 
   console.log("\n" + "═".repeat(50));
-  console.log(`🎉 완료! 저장: ${stats.saved}개, 스킵: ${stats.skipped}개, 이미지: ${stats.images}장`);
+  console.log(`🎉 완료! 저장: ${stats.saved}개, 스킵: ${stats.skipped}개, 이미지: ${stats.images}장 (S3)`);
   console.log("═".repeat(50));
 }
 
 // ══════════════════════════════════════════
-// 모드 3: 수동 데이터
+// 로컬 이미지 → S3 마이그레이션
+// ══════════════════════════════════════════
+
+async function migrateLocalToS3() {
+  const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "venues");
+  if (!fs.existsSync(UPLOAD_DIR)) {
+    console.log("❌ public/uploads/venues/ 폴더가 없습니다.");
+    return;
+  }
+
+  // DB에서 로컬 이미지 경로를 가진 업소 찾기
+  const venues = await prisma.venue.findMany({
+    where: { images: { isEmpty: false } },
+  });
+
+  const localVenues = venues.filter(v => v.images.some(img => img.startsWith("/uploads/")));
+  console.log(`🔄 로컬 → S3 마이그레이션 (${localVenues.length}개 업소)\n`);
+
+  let uploaded = 0;
+  let failed = 0;
+
+  for (const venue of localVenues) {
+    const newImages: string[] = [];
+
+    for (const imgPath of venue.images) {
+      if (!imgPath.startsWith("/uploads/")) {
+        newImages.push(imgPath); // 이미 S3 URL이면 그대로
+        continue;
+      }
+
+      const localFile = path.join(process.cwd(), "public", imgPath);
+      if (!fs.existsSync(localFile)) {
+        console.log(`   ⚠️  파일 없음: ${imgPath}`);
+        failed++;
+        continue;
+      }
+
+      // /uploads/venues/slug/1.jpg → venues/slug/1.jpg
+      const s3Key = imgPath.replace(/^\/uploads\//, "");
+      const fileBuffer = fs.readFileSync(localFile);
+      const ext = path.extname(localFile).toLowerCase();
+
+      try {
+        await s3.send(new PutObjectCommand({
+          Bucket: S3_BUCKET,
+          Key: s3Key,
+          Body: fileBuffer,
+          ContentType: contentTypeFromExt(ext),
+          CacheControl: "public, max-age=31536000",
+        }));
+        newImages.push(s3Url(s3Key));
+        uploaded++;
+      } catch (err) {
+        console.error(`   ❌ ${imgPath}:`, (err as Error).message);
+        newImages.push(imgPath); // 실패하면 원래 경로 유지
+        failed++;
+      }
+    }
+
+    // DB 업데이트
+    await prisma.venue.update({
+      where: { id: venue.id },
+      data: { images: newImages },
+    });
+    console.log(`   ✅ ${venue.name} - ${venue.images.length}장 마이그레이션`);
+  }
+
+  console.log("\n" + "═".repeat(50));
+  console.log(`🎉 마이그레이션 완료! 업로드: ${uploaded}장, 실패: ${failed}장`);
+  console.log("═".repeat(50));
+}
+
+// ══════════════════════════════════════════
+// DB 정리 — 관련 없는 업소 제거 + 이미지 재검색
+// ══════════════════════════════════════════
+
+async function cleanupVenues() {
+  console.log("🧹 DB 정리 시작...\n");
+
+  // 이름 기반으로 관련 없는 업소 제거
+  const suspiciousKeywords = [
+    "금거래", "금매매", "부동산", "학원", "병원", "의원", "약국",
+    "세탁", "편의점", "마트", "주유소", "은행", "보험",
+    "삼겹살", "곱창", "족발", "치킨", "피자", "햄버거", "국밥",
+    "갈비", "고기", "구이", "보쌈", "찌개", "탕", "냉면",
+    "초밥", "돈까스", "라멘", "떡볶이", "분식", "국수",
+    "빵집", "베이커리", "카페", "커피",
+    "헤어", "미용", "네일", "피부과", "성형",
+    "모텔", "게스트하우스",
+    "트레이닝", "헬스", "필라테스", "요가", "PT",
+    "스테이크", "파스타",
+  ];
+
+  const allVenues = await prisma.venue.findMany({ where: { sourceName: "naver" } });
+  let deleted = 0;
+
+  for (const venue of allVenues) {
+    const nameLower = venue.name.toLowerCase();
+    const descLower = (venue.description || "").toLowerCase();
+    const isSuspicious = suspiciousKeywords.some(kw => nameLower.includes(kw) || descLower.includes(kw));
+
+    if (isSuspicious) {
+      if (!DRY_RUN) {
+        await prisma.venue.delete({ where: { id: venue.id } });
+      }
+      console.log(`   🗑️  ${venue.name} (${venue.category}) — 삭제${DRY_RUN ? " (dry)" : ""}`);
+      deleted++;
+    }
+  }
+
+  console.log(`\n🎉 정리 완료! ${deleted}개 업소 삭제${DRY_RUN ? " (dry run)" : ""}`);
+  console.log(`   남은 업소: ${allVenues.length - deleted}개`);
+}
+
+// ══════════════════════════════════════════
+// 수동 데이터
 // ══════════════════════════════════════════
 
 async function insertManualData() {
@@ -594,12 +581,10 @@ async function insertManualData() {
   for (const v of manualVenues) {
     const existing = await prisma.venue.findFirst({ where: { name: v.name, address: v.address } });
     if (existing) continue;
-
     await prisma.venue.create({ data: { ...v, images: [], isApproved: true, sourceName: "manual" } });
     count++;
     console.log(`✅ ${v.name} (${v.region} ${v.district})`);
   }
-
   console.log(`\n🎉 수동 데이터 삽입 완료! ${count}개 추가`);
 }
 
@@ -611,11 +596,14 @@ async function main() {
   const mode = process.argv[2] || "manual";
 
   switch (mode) {
-    case "crawl":
-      await crawlNaverPlace();
-      break;
     case "naver":
       await crawlNaverApi();
+      break;
+    case "migrate-s3":
+      await migrateLocalToS3();
+      break;
+    case "cleanup":
+      await cleanupVenues();
       break;
     default:
       await insertManualData();

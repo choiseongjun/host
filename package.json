@@ -10,12 +10,13 @@
     "lint": "eslint",
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "npx tsx scripts/seed.ts",
-    "db:crawl": "npx tsx scripts/crawl-naver.ts crawl",
-    "db:crawl:dry": "npx tsx scripts/crawl-naver.ts crawl --dry",
-    "db:crawl:api": "npx tsx scripts/crawl-naver.ts naver",
+    "db:crawl": "npx tsx scripts/crawl-naver.ts naver",
+    "db:crawl:dry": "npx tsx scripts/crawl-naver.ts naver --dry",
+    "db:migrate-s3": "npx tsx scripts/crawl-naver.ts migrate-s3",
     "db:studio": "npx prisma studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1018.0",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/adapter-pg-worker": "^6.9.0",
     "@prisma/client": "^7.5.0",

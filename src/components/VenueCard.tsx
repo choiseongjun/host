@@ -8,17 +8,25 @@ export default function VenueCard({ venue }: { venue: Venue }) {
       href={`/venue/${venue.id}`}
       className="group block overflow-hidden rounded-xl border border-card-border bg-card-bg transition-all hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5"
     >
-      {/* Image placeholder */}
-      <div className="relative aspect-[16/10] bg-gradient-to-br from-zinc-800 to-zinc-900">
-        <div className="flex h-full items-center justify-center text-4xl opacity-30">
-          {venue.category === "룸살롱" && "🥂"}
-          {venue.category === "바/라운지" && "🍸"}
-          {venue.category === "노래방" && "🎤"}
-          {venue.category === "클럽" && "🎵"}
-          {venue.category === "호스트바" && "🌙"}
-          {venue.category === "중년노래방" && "🎶"}
-          {venue.category === "마사지" && "💆"}
-        </div>
+      {/* Image */}
+      <div className="relative aspect-[16/10] bg-gradient-to-br from-zinc-800 to-zinc-900 overflow-hidden">
+        {venue.images && venue.images.length > 0 ? (
+          <img
+            src={venue.images[0]}
+            alt={venue.name}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-4xl opacity-30">
+            {venue.category === "룸살롱" && "🥂"}
+            {venue.category === "바/라운지" && "🍸"}
+            {venue.category === "노래방" && "🎤"}
+            {venue.category === "클럽" && "🎵"}
+            {venue.category === "호스트바" && "🌙"}
+            {venue.category === "중년노래방" && "🎶"}
+            {venue.category === "마사지" && "💆"}
+          </div>
+        )}
         {venue.isPremium && (
           <span className="absolute left-3 top-3 rounded bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black">
             Premium
