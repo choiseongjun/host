@@ -348,6 +348,46 @@ function buildSearchQueries(): SearchQuery[] {
 }
 
 // ══════════════════════════════════════════
+// 네이버 Place 공식 사진 추출
+// ══════════════════════════════════════════
+
+async function getPlaceIdFromSearch(name: string, address: string): Promise<string | null> {
+  // 네이버 검색 HTML에서 Place ID 추출
+  const query = `${name} ${address.split(" ").slice(1, 3).join(" ")}`;
+  try {
+    const res = await fetch(`https://search.naver.com/search.naver?where=nexearch&query=${encodeURIComponent(query)}`, {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const ids = [...html.matchAll(/place\/(\d+)/g)].map(m => m[1]);
+    return ids[0] || null;
+  } catch { return null; }
+}
+
+async function getPlacePhotos(placeId: string): Promise<string[]> {
+  try {
+    const res = await fetch(`https://m.place.naver.com/restaurant/${placeId}/home`, {
+      headers: { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15" },
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+
+    // URL이 HTML 인코딩되어 있음: https%3A%2F%2Fldb-phinf.pstatic.net%2F...
+    // 1) 인코딩된 URL 추출
+    const encoded = [...html.matchAll(/https%3A%2F%2Fldb-phinf\.pstatic\.net%2F[^"'&\s)]+/g)]
+      .map(m => decodeURIComponent(m[0]));
+    // 2) 일반 URL도 추출
+    const plain = [...html.matchAll(/https:\/\/ldb-phinf\.pstatic\.net\/[^"'\s)\\]+/g)]
+      .map(m => m[0]);
+
+    const all = [...new Set([...encoded, ...plain])];
+    // .jpg, .jpeg, .png, .webp 로 끝나는 것만 필터
+    return all.filter(u => /\.(jpg|jpeg|png|webp)/i.test(u));
+  } catch { return []; }
+}
+
+// ══════════════════════════════════════════
 // 네이버 공식 API 크롤링 → S3
 // ══════════════════════════════════════════
 
@@ -400,11 +440,15 @@ async function crawlNaverApi() {
 
         const { region, district } = extractRegionDistrict(address);
 
-        // 이미지 검색 — "업소명 매장" 으로 검색해서 음식 사진 대신 매장 사진 우선
-        const imgQuery = `${name} ${q.category} 매장`;
-        const imgUrl = `https://openapi.naver.com/v1/search/image?query=${encodeURIComponent(imgQuery)}&display=8&sort=sim&filter=large`;
-        const imgResult = await naverApiFetch<{ items: { link: string }[] }>(imgUrl);
-        const imageUrls = imgResult?.items?.map((i) => i.link) || [];
+        // Place ID로 공식 사진 가져오기
+        const placeId = await getPlaceIdFromSearch(name, address);
+        await sleep(300);
+        let imageUrls: string[] = [];
+        if (placeId) {
+          imageUrls = await getPlacePhotos(placeId);
+          await sleep(300);
+          if (imageUrls.length) console.log(`      🔗 Place ${placeId} → 공식사진 ${imageUrls.length}장`);
+        }
 
         const venueSlug = slugify(`${name}-${region}`);
         const images = DRY_RUN ? [] : await uploadImagesToS3(imageUrls, venueSlug, 5);
@@ -558,6 +602,69 @@ async function cleanupVenues() {
 }
 
 // ══════════════════════════════════════════
+// 기존 업소 이미지 → Place 공식사진으로 교체
+// ══════════════════════════════════════════
+
+async function reimageVenues() {
+  const venues = await prisma.venue.findMany({
+    where: { sourceName: { in: ["naver", "naver-place"] } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  console.log(`🖼️  이미지 교체 시작 (${venues.length}개 업소)${DRY_RUN ? " [DRY RUN]" : ""}\n`);
+
+  let stats = { updated: 0, skipped: 0, noPlace: 0 };
+
+  for (let i = 0; i < venues.length; i++) {
+    const venue = venues[i];
+    process.stdout.write(`[${i + 1}/${venues.length}] ${venue.name} `);
+
+    // Place ID 찾기
+    const placeId = await getPlaceIdFromSearch(venue.name, venue.address);
+    await sleep(500);
+
+    if (!placeId) {
+      console.log("→ Place ID 없음");
+      stats.noPlace++;
+      continue;
+    }
+
+    // 공식 사진 가져오기
+    const photos = await getPlacePhotos(placeId);
+    await sleep(500);
+
+    if (!photos.length) {
+      console.log(`→ Place ${placeId} 사진 없음`);
+      stats.skipped++;
+      continue;
+    }
+
+    if (DRY_RUN) {
+      console.log(`→ 📷 ${photos.length}장 (dry)`);
+      stats.updated++;
+      continue;
+    }
+
+    // S3 업로드
+    const venueSlug = slugify(`${venue.name}-${placeId}`);
+    const images = await uploadImagesToS3(photos, venueSlug, 5);
+
+    if (images.length > 0) {
+      await prisma.venue.update({ where: { id: venue.id }, data: { images } });
+      console.log(`→ 📷 ${images.length}장 교체 완료`);
+      stats.updated++;
+    } else {
+      console.log("→ 업로드 실패");
+      stats.skipped++;
+    }
+  }
+
+  console.log("\n" + "═".repeat(50));
+  console.log(`🎉 이미지 교체 완료! 교체: ${stats.updated}, 스킵: ${stats.skipped}, Place 없음: ${stats.noPlace}`);
+  console.log("═".repeat(50));
+}
+
+// ══════════════════════════════════════════
 // 수동 데이터
 // ══════════════════════════════════════════
 
@@ -604,6 +711,9 @@ async function main() {
       break;
     case "cleanup":
       await cleanupVenues();
+      break;
+    case "reimage":
+      await reimageVenues();
       break;
     default:
       await insertManualData();

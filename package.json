@@ -13,6 +13,8 @@
     "db:crawl": "npx tsx scripts/crawl-naver.ts naver",
     "db:crawl:dry": "npx tsx scripts/crawl-naver.ts naver --dry",
     "db:migrate-s3": "npx tsx scripts/crawl-naver.ts migrate-s3",
+    "db:cleanup": "npx tsx scripts/crawl-naver.ts cleanup",
+    "db:reimage": "npx tsx scripts/crawl-naver.ts reimage",
     "db:studio": "npx prisma studio"
   },
   "dependencies": {
