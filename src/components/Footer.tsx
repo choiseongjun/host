@@ -11,11 +11,9 @@ export default function Footer() {
               <span className="text-foreground">전쟁</span>
             </Link>
             <p className="mt-3 text-sm leading-6 text-muted">
-              대한민국 No.1 나이트라이프 가이드.
+              밤이 시작되는 곳, 사랑과전쟁.
               <br />
               검증된 업소 정보와 실제 리뷰를 확인하세요.
-              <br />
-              사랑과전쟁에서 시작하세요.
             </p>
           </div>
 

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "사랑과전쟁 - 대한민국 No.1 나이트라이프 가이드",
+  title: "사랑과전쟁 - 밤이 시작되는 곳",
   description: "검증된 업소 정보와 실제 리뷰를 확인하세요. 룸살롱, 바, 클럽, 노래방, 호스트바, 마사지 정보를 한눈에.",
 };
 

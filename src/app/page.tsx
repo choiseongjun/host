@@ -18,7 +18,7 @@ export default function Home() {
             <span className="text-accent">사랑과</span>전쟁
           </h1>
           <p className="mx-auto mt-4 max-w-md text-base text-muted">
-            대한민국 No.1 나이트라이프 가이드
+            밤이 시작되는 곳
             <br />
             검증된 업소 정보와 실제 리뷰를 확인하세요
           </p>
