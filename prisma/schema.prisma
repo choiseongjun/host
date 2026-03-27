@@ -1,0 +1,377 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ══════════════════════════════════════
+// 기존 테이블 (부동산 데이터) - 건드리지 않음
+// ══════════════════════════════════════
+
+model lease_transactions {
+  id              Int        @id @default(autoincrement())
+  property_id     Int
+  region_id       Int
+  deal_date       DateTime
+  deal_year       Int
+  deal_month      Int
+  deal_day        Int
+  lease_type      String
+  deposit         BigInt
+  monthly_rent    Int?
+  area            Float
+  floor           Int?
+  contract_period String?
+  renewal_right   String?
+  created_at      DateTime   @default(now())
+  properties      properties @relation(fields: [property_id], references: [id])
+  regions         regions    @relation(fields: [region_id], references: [id])
+
+  @@index([deal_date])
+  @@index([deposit])
+  @@index([lease_type])
+  @@index([property_id, deal_date(sort: Desc)], map: "lease_transactions_property_date_idx")
+  @@index([property_id])
+  @@index([property_id, lease_type], map: "lease_transactions_property_type_idx")
+  @@index([region_id])
+}
+
+model properties {
+  id                 Int                  @id @default(autoincrement())
+  name               String
+  region_id          Int
+  dong               String?
+  jibun              String?
+  built_year         Int?
+  total_floors       Int?
+  property_type      String               @default("APT")
+  lease_transactions lease_transactions[]
+  regions            regions              @relation(fields: [region_id], references: [id])
+  transactions       transactions[]
+
+  @@index([name])
+  @@index([property_type])
+  @@index([region_id])
+  @@index([region_id, name], map: "properties_region_name_idx")
+}
+
+model regions {
+  id                 Int                  @id @default(autoincrement())
+  sido_code          String
+  sido_name          String
+  gugun_code         String
+  gugun_name         String
+  lease_transactions lease_transactions[]
+  properties         properties[]
+  transactions       transactions[]
+
+  @@unique([sido_code, gugun_code])
+}
+
+model transactions {
+  id               Int        @id @default(autoincrement())
+  property_id      Int
+  region_id        Int
+  deal_date        DateTime
+  deal_year        Int
+  deal_month       Int
+  deal_day         Int
+  price            BigInt
+  area             Float
+  floor            Int?
+  property_type    String     @default("APT")
+  cancel_deal_type String?
+  created_at       DateTime   @default(now())
+  properties       properties @relation(fields: [property_id], references: [id])
+  regions          regions    @relation(fields: [region_id], references: [id])
+
+  @@index([deal_date])
+  @@index([price])
+  @@index([property_id, deal_date(sort: Desc)], map: "transactions_property_date_idx")
+  @@index([property_id])
+  @@index([region_id])
+}
+
+// ══════════════════════════════════════
+// 사랑과전쟁 테이블
+// ══════════════════════════════════════
+
+// ── 회원 ──
+
+enum UserRole {
+  USER
+  BUSINESS
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  username      String    @unique
+  email         String    @unique
+  password      String
+  nickname      String
+  phone         String?
+  gender        String?
+  birthdate     DateTime?
+  profileImage  String?
+  role          UserRole  @default(USER)
+  marketing     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  businessNumber String?
+  businessName   String?
+  representative String?
+
+  venues        Venue[]
+  reviews       Review[]
+  posts         Post[]
+  comments      Comment[]
+  favorites     Favorite[]
+  jobs          Job[]
+  feedItems     FeedItem[]
+}
+
+// ── 업소 ──
+
+enum PriceLevel {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+model Venue {
+  id            String     @id @default(cuid())
+  name          String
+  category      String
+  categorySlug  String
+  region        String
+  district      String
+  address       String
+  phone         String
+  hours         String
+  lateNight     Boolean    @default(false)
+  closedDays    String?
+  priceRange    String?
+  priceLevel    PriceLevel @default(MEDIUM)
+  shortIntro    String?
+  description   String?
+  tags          String[]
+  facilities    String[]
+  images        String[]
+  rating        Float      @default(0)
+  reviewCount   Int        @default(0)
+  viewCount     Int        @default(0)
+  favoriteCount Int        @default(0)
+  isPremium     Boolean    @default(false)
+  isBanner      Boolean    @default(false)
+  isApproved    Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  ownerId       String?
+  owner         User?      @relation(fields: [ownerId], references: [id])
+
+  reviews       Review[]
+  favorites     Favorite[]
+  menuItems     MenuItem[]
+  priceItems    PriceItem[]
+  feedItems     FeedItem[]
+
+  sourceUrl     String?    @unique
+  sourceName    String?
+
+  @@index([categorySlug])
+  @@index([region, district])
+  @@index([rating])
+}
+
+// ── 메뉴 ──
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  venueId     String
+  venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  category    String
+  name        String
+  price       Int
+  description String?
+  image       String?
+  isPopular   Boolean  @default(false)
+  isNew       Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([venueId])
+}
+
+// ── 가격표 ──
+
+model PriceItem {
+  id          String   @id @default(cuid())
+  venueId     String
+  venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  category    String
+  name        String
+  price       String
+  unit        String?
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([venueId])
+}
+
+// ── 리뷰 ──
+
+model Review {
+  id          String   @id @default(cuid())
+  venueId     String
+  venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  content     String
+  atmosphere  Int
+  value       Int
+  service     Int
+  overall     Float
+  verified    Boolean  @default(false)
+  likes       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([venueId])
+  @@index([authorId])
+}
+
+// ── 찜 ──
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, venueId])
+}
+
+// ── 커뮤니티 ──
+
+enum PostCategory {
+  FREE
+  RECOMMEND
+  REVIEW
+  MEETUP
+  INFO
+}
+
+model Post {
+  id             String       @id @default(cuid())
+  category       PostCategory
+  title          String
+  content        String
+  images         String[]
+  authorId       String
+  author         User         @relation(fields: [authorId], references: [id])
+  views          Int          @default(0)
+  likes          Int          @default(0)
+  commentCount   Int          @default(0)
+  isPinned       Boolean      @default(false)
+  relatedVenueId String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  comments       Comment[]
+
+  @@index([category])
+  @@index([createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  likes     Int      @default(0)
+  parentId  String?
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+}
+
+// ── 구인구직 ──
+
+enum JobType {
+  HIRING
+  SEEKING
+}
+
+enum JobStatus {
+  ACTIVE
+  CLOSED
+}
+
+model Job {
+  id           String    @id @default(cuid())
+  type         JobType
+  status       JobStatus @default(ACTIVE)
+  title        String
+  category     String
+  region       String
+  district     String?
+  salary       String
+  workHours    String?
+  gender       String?
+  age          String?
+  description  String
+  requirements String[]
+  contact      String
+  authorId     String
+  author       User      @relation(fields: [authorId], references: [id])
+  views        Int       @default(0)
+  contactCount Int       @default(0)
+  isUrgent     Boolean   @default(false)
+  isPremium    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([type])
+  @@index([category])
+  @@index([region])
+}
+
+// ── 실시간 피드 ──
+
+enum FeedType {
+  EVENT
+  STATUS
+  NOTICE
+  PHOTO
+}
+
+model FeedItem {
+  id        String   @id @default(cuid())
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  type      FeedType
+  content   String
+  tags      String[]
+  likes     Int      @default(0)
+  isLive    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([venueId])
+  @@index([createdAt])
+}
