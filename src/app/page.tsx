@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { categories, venues, jobs } from "@/data/mock";
+import { categories, venues, jobs, posts, feedItems } from "@/data/mock";
 import VenueCard from "@/components/VenueCard";
 import JobCard from "@/components/JobCard";
 
 export default function Home() {
   const bannerVenues = venues.filter((v) => v.isBanner);
   const premiumVenues = venues.filter((v) => v.isPremium);
+  const hotPosts = posts.filter((p) => !p.isPinned).sort((a, b) => b.commentCount - a.commentCount).slice(0, 5);
+  const liveFeed = feedItems.filter((f) => f.isLive).slice(0, 4);
   const recentVenues = venues.slice(0, 8);
 
   return (
@@ -123,6 +125,102 @@ export default function Home() {
           {recentVenues.map((venue) => (
             <VenueCard key={venue.id} venue={venue} />
           ))}
+        </div>
+      </section>
+
+      {/* Live Feed + Community */}
+      <section className="mx-auto max-w-7xl px-4 py-12">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          {/* Live Feed */}
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-foreground">실시간 피드</h2>
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+                </span>
+              </div>
+              <Link href="/feed" className="text-sm text-accent hover:text-accent-hover">
+                전체보기 →
+              </Link>
+            </div>
+            <div className="mt-4 space-y-3">
+              {liveFeed.map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/venue/${item.venueId}`}
+                  className="group block rounded-xl border border-card-border bg-card-bg p-4 transition-all hover:border-accent/40"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground group-hover:text-accent">
+                      {item.venueName}
+                    </span>
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                        item.type === "event"
+                          ? "bg-orange-500/20 text-orange-400"
+                          : "bg-blue-500/20 text-blue-400"
+                      }`}
+                    >
+                      {item.type === "event" ? "이벤트" : "영업현황"}
+                    </span>
+                    {item.isLive && (
+                      <span className="rounded-full bg-green-500/20 px-1.5 py-0.5 text-[10px] text-green-400">LIVE</span>
+                    )}
+                  </div>
+                  <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-muted">{item.content}</p>
+                  <span className="mt-1 block text-[10px] text-muted">{item.time}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Hot Community Posts */}
+          <div>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-foreground">커뮤니티 인기글</h2>
+              <Link href="/community" className="text-sm text-accent hover:text-accent-hover">
+                전체보기 →
+              </Link>
+            </div>
+            <div className="mt-4 space-y-2">
+              {hotPosts.map((post, i) => (
+                <Link
+                  key={post.id}
+                  href={`/community/${post.id}`}
+                  className="group flex items-center gap-4 rounded-xl border border-card-border bg-card-bg p-4 transition-all hover:border-accent/40"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-accent">
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                          post.category === "추천/질문"
+                            ? "bg-blue-500/20 text-blue-400"
+                            : post.category === "후기"
+                            ? "bg-green-500/20 text-green-400"
+                            : post.category === "모임"
+                            ? "bg-purple-500/20 text-purple-400"
+                            : "bg-zinc-500/20 text-zinc-400"
+                        }`}
+                      >
+                        {post.category}
+                      </span>
+                      <h3 className="truncate text-sm text-foreground group-hover:text-accent">{post.title}</h3>
+                    </div>
+                    <div className="mt-1 flex gap-3 text-[10px] text-muted">
+                      <span>{post.author}</span>
+                      <span>❤️ {post.likes}</span>
+                      <span>💬 {post.commentCount}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

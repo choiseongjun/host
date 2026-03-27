@@ -12,6 +12,8 @@ const navItems = [
   { name: "중년노래방", href: "/category/middle-age-karaoke" },
   { name: "마사지", href: "/category/massage" },
   { name: "구인구직", href: "/jobs" },
+  { name: "커뮤니티", href: "/community" },
+  { name: "실시간", href: "/feed" },
 ];
 
 export default function Header() {

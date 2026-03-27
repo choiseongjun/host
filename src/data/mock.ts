@@ -556,6 +556,262 @@ export const jobs: Job[] = [
   },
 ];
 
+// ── 커뮤니티 ──
+
+export interface Post {
+  id: string;
+  category: "자유" | "추천/질문" | "후기" | "모임" | "정보";
+  title: string;
+  content: string;
+  author: string;
+  date: string;
+  views: number;
+  likes: number;
+  commentCount: number;
+  isPinned: boolean;
+}
+
+export interface Comment {
+  id: string;
+  postId: string;
+  author: string;
+  content: string;
+  date: string;
+  likes: number;
+  isAuthor: boolean;
+}
+
+export const posts: Post[] = [
+  {
+    id: "p1",
+    category: "추천/질문",
+    title: "강남 데이트 코스로 괜찮은 바 추천해주세요",
+    content: "이번 주말 여자친구랑 강남에서 데이트하는데 분위기 좋은 바 추천 좀 해주세요. 예산은 1인 5만원 정도로 생각하고 있습니다. 루프탑이면 더 좋고요!",
+    author: "강남러버",
+    date: "2026-03-27",
+    views: 342,
+    likes: 15,
+    commentCount: 23,
+    isPinned: false,
+  },
+  {
+    id: "p2",
+    category: "후기",
+    title: "블루문 라운지 다녀왔습니다 (사진 있음)",
+    content: "어제 친구들이랑 블루문 라운지 다녀왔는데 진짜 야경이 미쳤습니다. 칵테일도 맛있고 서비스도 좋았어요. 다만 주말이라 웨이팅이 좀 있었습니다.",
+    author: "청담맨",
+    date: "2026-03-26",
+    views: 567,
+    likes: 32,
+    commentCount: 18,
+    isPinned: false,
+  },
+  {
+    id: "p3",
+    category: "자유",
+    title: "요즘 홍대 클럽 분위기 어떤가요?",
+    content: "한 1년 만에 홍대 가려고 하는데 요즘 분위기가 어떤지 궁금합니다. 예전에 자주 가던 곳들이 아직도 있나요?",
+    author: "클럽러",
+    date: "2026-03-26",
+    views: 234,
+    likes: 8,
+    commentCount: 31,
+    isPinned: false,
+  },
+  {
+    id: "p4",
+    category: "정보",
+    title: "[공지] 사랑과전쟁 커뮤니티 이용 규칙",
+    content: "안녕하세요. 사랑과전쟁 커뮤니티 이용 규칙을 안내드립니다. 상업적 광고, 허위 정보, 욕설 등은 제재 대상입니다.",
+    author: "운영자",
+    date: "2026-03-20",
+    views: 1205,
+    likes: 45,
+    commentCount: 5,
+    isPinned: true,
+  },
+  {
+    id: "p5",
+    category: "모임",
+    title: "이번 금요일 강남 바 투어 같이 가실 분",
+    content: "금요일 저녁 8시부터 강남 바 3~4곳 돌아볼 계획입니다. 30대 남녀 혼성 모임이고 현재 4명 모였습니다. 관심 있으신 분 댓글 주세요!",
+    author: "모임장",
+    date: "2026-03-25",
+    views: 456,
+    likes: 22,
+    commentCount: 38,
+    isPinned: false,
+  },
+  {
+    id: "p6",
+    category: "추천/질문",
+    title: "접대용 룸살롱 추천 부탁드립니다",
+    content: "다음 주에 중요한 비즈니스 미팅이 있는데 접대용으로 괜찮은 곳 있을까요? 서초/강남 쪽으로 찾고 있습니다. 예산은 넉넉합니다.",
+    author: "비즈맨",
+    date: "2026-03-25",
+    views: 189,
+    likes: 5,
+    commentCount: 12,
+    isPinned: false,
+  },
+  {
+    id: "p7",
+    category: "후기",
+    title: "역삼 골든마이크 노래방 후기",
+    content: "단체 회식으로 갔는데 룸이 넓고 음향도 좋았습니다. 가격은 좀 있지만 서비스가 좋아서 만족합니다. 다음에 또 갈 예정입니다.",
+    author: "노래왕",
+    date: "2026-03-24",
+    views: 145,
+    likes: 10,
+    commentCount: 7,
+    isPinned: false,
+  },
+  {
+    id: "p8",
+    category: "자유",
+    title: "마사지 받고 바 가는 코스 어떤가요",
+    content: "퇴근하고 마사지 1시간 받고 근처 바에서 한잔 하는 코스를 즐기는데 저만 이러나요? ㅋㅋ 같은 취미 가진 분 계신가요?",
+    author: "힐링맨",
+    date: "2026-03-24",
+    views: 278,
+    likes: 35,
+    commentCount: 42,
+    isPinned: false,
+  },
+];
+
+export const comments: Comment[] = [
+  { id: "c1", postId: "p1", author: "바매니아", content: "블루문 라운지 강추합니다! 루프탑 야경이 진짜 좋아요.", date: "2026-03-27", likes: 8, isAuthor: false },
+  { id: "c2", postId: "p1", author: "청담동주민", content: "예산 5만원이면 청담쪽은 좀 빠듯할 수 있어요. 신사동 쪽 찾아보세요.", date: "2026-03-27", likes: 5, isAuthor: false },
+  { id: "c3", postId: "p1", author: "강남러버", content: "감사합니다! 블루문 라운지 한번 가볼게요.", date: "2026-03-27", likes: 2, isAuthor: true },
+  { id: "c4", postId: "p1", author: "데이트고수", content: "재즈 앤 블루스도 좋아요. 이태원이긴 한데 분위기 최고입니다.", date: "2026-03-27", likes: 6, isAuthor: false },
+  { id: "c5", postId: "p2", author: "야경러버", content: "저도 갔었는데 진짜 좋았어요! 칵테일 뭐 드셨어요?", date: "2026-03-26", likes: 3, isAuthor: false },
+  { id: "c6", postId: "p2", author: "청담맨", content: "시그니처 칵테일 '문라이트' 추천합니다. 진짜 맛있어요.", date: "2026-03-26", likes: 7, isAuthor: true },
+];
+
+// ── 실시간 피드 ──
+
+export interface FeedItem {
+  id: string;
+  venueId: string;
+  venueName: string;
+  venueCategory: string;
+  type: "event" | "status" | "notice" | "photo";
+  content: string;
+  date: string;
+  time: string;
+  likes: number;
+  isLive: boolean;
+  tags: string[];
+}
+
+export const feedItems: FeedItem[] = [
+  {
+    id: "f1",
+    venueId: "2",
+    venueName: "블루문 라운지",
+    venueCategory: "바/라운지",
+    type: "event",
+    content: "🍸 오늘의 해피아워! PM 6:00~8:00 칵테일 전 메뉴 30% 할인. 루프탑 테이블 5석 남았습니다!",
+    date: "2026-03-27",
+    time: "17:30",
+    likes: 24,
+    isLive: true,
+    tags: ["해피아워", "할인", "루프탑"],
+  },
+  {
+    id: "f2",
+    venueId: "4",
+    venueName: "클럽 옥타곤",
+    venueCategory: "클럽",
+    type: "event",
+    content: "🎧 이번 주 토요일 스페셜 게스트 DJ SODA! 사전 예약 시 입장료 50% 할인. 예약 마감 임박!",
+    date: "2026-03-27",
+    time: "16:00",
+    likes: 89,
+    isLive: true,
+    tags: ["DJ", "이벤트", "사전예약"],
+  },
+  {
+    id: "f3",
+    venueId: "1",
+    venueName: "르누아르",
+    venueCategory: "룸살롱",
+    type: "status",
+    content: "오늘 영업 시작했습니다. VIP룸 2개, 일반룸 5개 예약 가능합니다. 사전 예약 시 웰컴 드링크 서비스!",
+    date: "2026-03-27",
+    time: "19:00",
+    likes: 12,
+    isLive: true,
+    tags: ["영업중", "예약가능"],
+  },
+  {
+    id: "f4",
+    venueId: "11",
+    venueName: "테라피 스파",
+    venueCategory: "마사지",
+    type: "event",
+    content: "💆 3월 마지막 주 특별 프로모션! 타이마사지 90분 + 아로마 30분 패키지 12만원 (정가 18만원). 선착순 10명!",
+    date: "2026-03-27",
+    time: "11:00",
+    likes: 34,
+    isLive: true,
+    tags: ["프로모션", "할인", "패키지"],
+  },
+  {
+    id: "f5",
+    venueId: "3",
+    venueName: "골든 마이크",
+    venueCategory: "노래방",
+    type: "status",
+    content: "오늘 대형룸(20인) 1개, 중형룸(10인) 3개 남아있습니다. 단체 예약 환영합니다!",
+    date: "2026-03-27",
+    time: "18:00",
+    likes: 6,
+    isLive: true,
+    tags: ["잔여룸", "단체가능"],
+  },
+  {
+    id: "f6",
+    venueId: "9",
+    venueName: "황금시대",
+    venueCategory: "중년노래방",
+    type: "notice",
+    content: "이번 주 금요일 트로트 라이브 이벤트! 인기 트로트 가수 미니 공연이 있습니다. 예약 필수!",
+    date: "2026-03-26",
+    time: "15:00",
+    likes: 18,
+    isLive: false,
+    tags: ["라이브", "트로트", "이벤트"],
+  },
+  {
+    id: "f7",
+    venueId: "7",
+    venueName: "재즈 앤 블루스",
+    venueCategory: "바/라운지",
+    type: "photo",
+    content: "오늘 밤 라이브 재즈 공연 라인업 공개! 9시부터 시작합니다. 분위기 있는 밤을 보내세요 🎷",
+    date: "2026-03-26",
+    time: "20:00",
+    likes: 27,
+    isLive: false,
+    tags: ["라이브재즈", "공연"],
+  },
+  {
+    id: "f8",
+    venueId: "8",
+    venueName: "네온 파라다이스",
+    venueCategory: "클럽",
+    type: "event",
+    content: "매주 수요일은 레이디스 나이트! 여성 무료 입장 + 첫 잔 무료. 이번 수요일도 파티 준비 완료!",
+    date: "2026-03-25",
+    time: "21:00",
+    likes: 45,
+    isLive: false,
+    tags: ["레이디스나이트", "무료입장"],
+  },
+];
+
 export const adPricing = [
   { name: "일반 리스팅", price: "무료", features: ["기본 프로필 등록", "리뷰 수신", "기본 검색 노출"] },
   { name: "지역 상단 노출", price: "월 50만원~", features: ["지역 검색 상단 고정", "프리미엄 배지", "우선 노출", "통계 리포트"] },
