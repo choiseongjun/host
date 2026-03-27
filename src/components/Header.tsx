@@ -21,8 +21,8 @@ export default function Header() {
     <header className="sticky top-0 z-50 border-b border-card-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
         <Link href="/" className="text-xl font-bold tracking-tight">
-          <span className="text-accent">NIGHT</span>
-          <span className="text-foreground">GUIDE</span>
+          <span className="text-accent">사랑과</span>
+          <span className="text-foreground">전쟁</span>
         </Link>
 
         {/* Desktop Nav */}

@@ -15,7 +15,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-b from-accent/5 via-transparent to-transparent" />
         <div className="relative mx-auto max-w-7xl px-4 py-20 text-center">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-            <span className="text-accent">NIGHT</span>GUIDE
+            <span className="text-accent">사랑과</span>전쟁
           </h1>
           <p className="mx-auto mt-4 max-w-md text-base text-muted">
             대한민국 No.1 나이트라이프 가이드
@@ -149,7 +149,7 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-4 py-16 text-center">
           <h2 className="text-2xl font-bold text-foreground">업소를 운영하고 계신가요?</h2>
           <p className="mx-auto mt-3 max-w-md text-sm text-muted">
-            NIGHTGUIDE에 업소를 등록하고 더 많은 고객에게 노출하세요.
+            사랑과전쟁에 업소를 등록하고 더 많은 고객에게 노출하세요.
             기본 등록은 무료입니다.
           </p>
           <div className="mt-6 flex justify-center gap-3">

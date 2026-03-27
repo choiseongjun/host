@@ -7,13 +7,15 @@ export default function Footer() {
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <Link href="/" className="text-lg font-bold">
-              <span className="text-accent">NIGHT</span>
-              <span className="text-foreground">GUIDE</span>
+              <span className="text-accent">사랑과</span>
+              <span className="text-foreground">전쟁</span>
             </Link>
             <p className="mt-3 text-sm leading-6 text-muted">
               대한민국 No.1 나이트라이프 가이드.
               <br />
               검증된 업소 정보와 실제 리뷰를 확인하세요.
+              <br />
+              사랑과전쟁에서 시작하세요.
             </p>
           </div>
 
@@ -33,7 +35,7 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-foreground">지역</h3>
             <ul className="mt-3 space-y-2">
-              {["강남구", "서초구", "마포구", "중구", "용산구"].map((region) => (
+              {["강남구", "서초구", "송파구", "마포구", "용산구", "종로구", "영등포구", "성동구"].map((region) => (
                 <li key={region}>
                   <Link href="#" className="text-sm text-muted transition-colors hover:text-accent">
                     {region}
@@ -58,7 +60,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 border-t border-card-border pt-6 text-center text-xs text-muted">
-          &copy; 2026 NIGHTGUIDE. All rights reserved.
+          &copy; 2026 사랑과전쟁. All rights reserved.
         </div>
       </div>
     </footer>
