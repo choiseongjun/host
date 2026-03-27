@@ -54,10 +54,10 @@ export default function Header() {
             로그인
           </Link>
           <Link
-            href="/auth/signup"
+            href="/venue/register"
             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-accent-hover"
           >
-            회원가입
+            업소 등록
           </Link>
         </div>
 
