@@ -12,10 +12,12 @@ export default function VenueCard({ venue }: { venue: Venue }) {
       <div className="relative aspect-[16/10] bg-gradient-to-br from-zinc-800 to-zinc-900">
         <div className="flex h-full items-center justify-center text-4xl opacity-30">
           {venue.category === "룸살롱" && "🥂"}
-          {venue.category === "바/라운지바" && "🍸"}
-          {venue.category === "노래방 (도우미)" && "🎤"}
+          {venue.category === "바/라운지" && "🍸"}
+          {venue.category === "노래방" && "🎤"}
           {venue.category === "클럽" && "🎵"}
           {venue.category === "호스트바" && "🌙"}
+          {venue.category === "중년노래방" && "🎶"}
+          {venue.category === "마사지" && "💆"}
         </div>
         {venue.isPremium && (
           <span className="absolute left-3 top-3 rounded bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black">

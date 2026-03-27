@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { categories, venues } from "@/data/mock";
+import { categories, venues, jobs } from "@/data/mock";
 import VenueCard from "@/components/VenueCard";
+import JobCard from "@/components/JobCard";
 
 export default function Home() {
   const bannerVenues = venues.filter((v) => v.isBanner);
@@ -121,6 +122,24 @@ export default function Home() {
         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {recentVenues.map((venue) => (
             <VenueCard key={venue.id} venue={venue} />
+          ))}
+        </div>
+      </section>
+
+      {/* Jobs Section */}
+      <section className="mx-auto max-w-7xl px-4 py-12">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">구인구직</h2>
+            <p className="mt-1 text-sm text-muted">최신 구인·구직 정보를 확인하세요</p>
+          </div>
+          <Link href="/jobs" className="text-sm text-accent hover:text-accent-hover">
+            전체보기 →
+          </Link>
+        </div>
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {jobs.slice(0, 3).map((job) => (
+            <JobCard key={job.id} job={job} />
           ))}
         </div>
       </section>

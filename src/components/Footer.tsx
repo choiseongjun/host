@@ -20,7 +20,7 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-foreground">카테고리</h3>
             <ul className="mt-3 space-y-2">
-              {["룸살롱", "바/라운지", "노래방", "클럽", "호스트바"].map((cat) => (
+              {["룸살롱", "바/라운지", "노래방", "클럽", "호스트바", "중년노래방", "마사지"].map((cat) => (
                 <li key={cat}>
                   <Link href="#" className="text-sm text-muted transition-colors hover:text-accent">
                     {cat}

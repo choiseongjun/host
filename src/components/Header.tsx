@@ -9,6 +9,9 @@ const navItems = [
   { name: "노래방", href: "/category/karaoke" },
   { name: "클럽", href: "/category/club" },
   { name: "호스트바", href: "/category/host-bar" },
+  { name: "중년노래방", href: "/category/middle-age-karaoke" },
+  { name: "마사지", href: "/category/massage" },
+  { name: "구인구직", href: "/jobs" },
 ];
 
 export default function Header() {
