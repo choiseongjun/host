@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { categories, regions } from "@/data/mock";
+import { useAuth } from "@/components/AuthProvider";
 
 const steps = ["기본정보", "상세정보", "사진등록", "미리보기"];
 
 export default function VenueRegisterPage() {
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -26,6 +28,20 @@ export default function VenueRegisterPage() {
   const removeTag = (tag: string) => {
     setTags(tags.filter((t) => t !== tag));
   };
+
+  if (!user || user.username !== "admin") {
+    return (
+      <div className="flex min-h-[calc(100vh-64px)] items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-foreground">접근 권한이 없습니다</p>
+          <p className="mt-2 text-sm text-muted">관리자만 업소를 등록할 수 있습니다.</p>
+          <Link href="/" className="mt-6 inline-block rounded-xl bg-accent px-6 py-3 text-sm font-medium text-black transition-colors hover:bg-accent-hover">
+            메인으로 돌아가기
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
