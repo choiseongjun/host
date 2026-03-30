@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [loginType, setLoginType] = useState<"user" | "business">("user");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -15,14 +16,26 @@ export default function LoginPage() {
 
   async function handleLogin() {
     setError("");
+    if (!username || !password) {
+      setError("아이디와 비밀번호를 입력해주세요.");
+      return;
+    }
     setLoading(true);
     try {
-      const data = await api.auth.login({ username, password });
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      router.push("/mypage");
-    } catch (e) {
-      setError((e as Error).message);
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "로그인에 실패했습니다.");
+        return;
+      }
+      login(data.token, data.user);
+      router.push("/");
+    } catch {
+      setError("서버 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -68,13 +81,14 @@ export default function LoginPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-foreground">
-                {loginType === "user" ? "이메일 또는 아이디" : "사업자 이메일"}
+                {loginType === "user" ? "아이디 또는 이메일" : "사업자 아이디"}
               </label>
               <input
                 type="text"
-                placeholder={loginType === "user" ? "이메일 또는 아이디 입력" : "사업자 이메일 입력"}
+                placeholder={loginType === "user" ? "아이디 또는 이메일 입력" : "사업자 아이디 입력"}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                 className="mt-1.5 w-full rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
               />
             </div>
@@ -89,7 +103,7 @@ export default function LoginPage() {
                 className="mt-1.5 w-full rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
               />
             </div>
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</p>}
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm text-muted">
@@ -104,33 +118,6 @@ export default function LoginPage() {
             <button onClick={handleLogin} disabled={loading} className="w-full rounded-xl bg-accent py-3 text-sm font-medium text-black transition-colors hover:bg-accent-hover disabled:opacity-50">
               {loading ? "로그인 중..." : "로그인"}
             </button>
-          </div>
-
-          {/* Social Login */}
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-card-border" />
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-card-bg px-3 text-muted">간편 로그인</span>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              <button className="flex items-center justify-center rounded-lg border border-card-border py-3 text-sm transition-colors hover:border-accent hover:text-accent">
-                <span className="text-lg">💬</span>
-                <span className="ml-1.5 text-xs text-muted">카카오</span>
-              </button>
-              <button className="flex items-center justify-center rounded-lg border border-card-border py-3 text-sm transition-colors hover:border-accent hover:text-accent">
-                <span className="text-lg">🟢</span>
-                <span className="ml-1.5 text-xs text-muted">네이버</span>
-              </button>
-              <button className="flex items-center justify-center rounded-lg border border-card-border py-3 text-sm transition-colors hover:border-accent hover:text-accent">
-                <span className="text-lg">🔵</span>
-                <span className="ml-1.5 text-xs text-muted">구글</span>
-              </button>
-            </div>
           </div>
         </div>
 

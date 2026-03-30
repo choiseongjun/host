@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "./AuthProvider";
 
 const navItems = [
   { name: "서울 룸살롱", href: "/category/room-salon" },
@@ -17,6 +19,14 @@ const navItems = [
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const router = useRouter();
+
+  function handleLogout() {
+    logout();
+    setMobileOpen(false);
+    router.push("/");
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-card-border bg-background/80 backdrop-blur-md">
@@ -46,18 +56,37 @@ export default function Header() {
           >
             검색
           </Link>
-          <Link
-            href="/auth/login"
-            className="rounded-lg border border-card-border px-4 py-2 text-sm text-muted transition-colors hover:border-accent hover:text-accent"
-          >
-            로그인
-          </Link>
-          <Link
-            href="/venue/register"
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-accent-hover"
-          >
-            업소 등록
-          </Link>
+          {user ? (
+            <>
+              <Link
+                href="/mypage"
+                className="rounded-lg border border-card-border px-4 py-2 text-sm text-muted transition-colors hover:border-accent hover:text-accent"
+              >
+                {user.nickname}님
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="rounded-lg border border-card-border px-4 py-2 text-sm text-muted transition-colors hover:border-red-500/50 hover:text-red-400"
+              >
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/auth/login"
+                className="rounded-lg border border-card-border px-4 py-2 text-sm text-muted transition-colors hover:border-accent hover:text-accent"
+              >
+                로그인
+              </Link>
+              <Link
+                href="/venue/register"
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-accent-hover"
+              >
+                업소 등록
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -90,29 +119,49 @@ export default function Header() {
           >
             검색
           </Link>
-          <Link
-            href="/mypage"
-            className="block rounded-lg px-3 py-3 text-sm text-muted"
-            onClick={() => setMobileOpen(false)}
-          >
-            마이페이지
-          </Link>
-          <div className="mt-2 flex gap-2">
-            <Link
-              href="/auth/login"
-              className="flex-1 rounded-lg border border-card-border py-3 text-center text-sm text-muted"
-              onClick={() => setMobileOpen(false)}
-            >
-              로그인
-            </Link>
-            <Link
-              href="/auth/signup"
-              className="flex-1 rounded-lg bg-accent py-3 text-center text-sm font-medium text-black"
-              onClick={() => setMobileOpen(false)}
-            >
-              회원가입
-            </Link>
-          </div>
+          {user ? (
+            <>
+              <Link
+                href="/mypage"
+                className="block rounded-lg px-3 py-3 text-sm text-muted"
+                onClick={() => setMobileOpen(false)}
+              >
+                마이페이지 ({user.nickname})
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="mt-2 w-full rounded-lg border border-card-border py-3 text-center text-sm text-red-400 transition-colors hover:border-red-500/50"
+              >
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/mypage"
+                className="block rounded-lg px-3 py-3 text-sm text-muted"
+                onClick={() => setMobileOpen(false)}
+              >
+                마이페이지
+              </Link>
+              <div className="mt-2 flex gap-2">
+                <Link
+                  href="/auth/login"
+                  className="flex-1 rounded-lg border border-card-border py-3 text-center text-sm text-muted"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  로그인
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="flex-1 rounded-lg bg-accent py-3 text-center text-sm font-medium text-black"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  회원가입
+                </Link>
+              </div>
+            </>
+          )}
         </nav>
       )}
     </header>
