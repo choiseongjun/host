@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import StarRating from "@/components/StarRating";
-import ReviewCard from "@/components/ReviewCard";
+import ImageGallery from "@/components/ImageGallery";
 
 export default async function VenuePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -28,9 +27,6 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
   });
 
   const reviews = venue.reviews;
-  const avgAtmosphere = reviews.length ? (reviews.reduce((s, r) => s + r.atmosphere, 0) / reviews.length).toFixed(1) : "-";
-  const avgValue = reviews.length ? (reviews.reduce((s, r) => s + r.value, 0) / reviews.length).toFixed(1) : "-";
-  const avgService = reviews.length ? (reviews.reduce((s, r) => s + r.service, 0) / reviews.length).toFixed(1) : "-";
 
   // 메뉴 카테고리별 그룹
   const menuByCategory: Record<string, typeof venue.menuItems> = {};
@@ -48,19 +44,10 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
 
   return (
     <div>
-      {/* Gallery */}
+      {/* Gallery - 한 화면당 사진 하나, 넘기기 가능 */}
       <section className="border-b border-card-border bg-card-bg">
         <div className="mx-auto max-w-7xl px-4 py-4">
-          <div className="grid grid-cols-4 gap-2 overflow-hidden rounded-xl">
-            <div className="col-span-2 row-span-2 flex aspect-[4/3] items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-              {venue.images[0] ? <img src={venue.images[0]} alt="" className="h-full w-full object-cover" /> : <span className="text-6xl opacity-20">📸</span>}
-            </div>
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="flex aspect-[4/3] items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-                {venue.images[i + 1] ? <img src={venue.images[i + 1]} alt="" className="h-full w-full object-cover" /> : <span className="text-2xl opacity-20">📸</span>}
-              </div>
-            ))}
-          </div>
+          <ImageGallery images={venue.images} />
         </div>
       </section>
 
@@ -86,11 +73,8 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
                   <p className="mt-1 text-sm text-muted">{venue.category} · {venue.region} {venue.district}</p>
                 </div>
                 <div className="text-right">
-                  <div className="flex items-center gap-2">
-                    <StarRating rating={venue.rating} size="lg" />
-                    <span className="text-xl font-bold text-accent">{venue.rating}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted">리뷰 {venue.reviewCount}개</p>
+                  <p className="text-xs text-muted">전체포털서칭</p>
+                  <span className="text-xl font-bold text-accent">AI통합평점 {venue.rating}</span>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -105,8 +89,15 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
               <dl className="mt-4 space-y-4">
                 <div className="flex items-start gap-4"><dt className="w-20 shrink-0 text-sm text-muted">주소</dt><dd className="text-sm text-foreground">{venue.address}</dd></div>
                 <div className="flex items-start gap-4"><dt className="w-20 shrink-0 text-sm text-muted">영업시간</dt><dd className="text-sm text-foreground">{venue.hours}{venue.lateNight && <span className="ml-2 rounded bg-accent/20 px-1.5 py-0.5 text-[10px] text-accent">심야영업</span>}</dd></div>
-                <div className="flex items-start gap-4"><dt className="w-20 shrink-0 text-sm text-muted">가격대</dt><dd className="text-sm text-accent font-medium">{venue.priceRange || "-"}</dd></div>
-                <div className="flex items-start gap-4"><dt className="w-20 shrink-0 text-sm text-muted">연락처</dt><dd className="text-sm text-foreground">{venue.phone}</dd></div>
+                <div className="flex items-start gap-4"><dt className="w-20 shrink-0 text-sm text-muted">가격대</dt><dd className="text-sm text-accent font-medium">{venue.priceRange || "0원~0원"} <span className="ml-1 rounded bg-accent/10 px-2 py-0.5 text-[10px] text-accent">상세문의</span></dd></div>
+                <div className="flex items-start gap-4">
+                  <dt className="w-20 shrink-0 text-sm text-muted">연락처</dt>
+                  <dd className="text-sm text-foreground">
+                    <a href={`tel:${venue.phone}`} className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-accent-hover">
+                      📞 {venue.phone} 즉시연결
+                    </a>
+                  </dd>
+                </div>
               </dl>
             </section>
 
@@ -167,41 +158,28 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
               </section>
             )}
 
-            {/* Rating Breakdown */}
+            {/* 전체포털서칭 AI통합평가 - 운영팀 수기 평가 + ❤️ 반응 */}
             <section className="rounded-xl border border-card-border bg-card-bg p-6">
-              <h2 className="text-lg font-bold text-foreground">평가 항목</h2>
-              <div className="mt-4 grid grid-cols-3 gap-6">
-                {[{ label: "분위기", val: avgAtmosphere }, { label: "가격대비", val: avgValue }, { label: "서비스", val: avgService }].map((r) => (
-                  <div key={r.label} className="text-center">
-                    <p className="text-3xl font-bold text-accent">{r.val}</p>
-                    <p className="mt-1 text-xs text-muted">{r.label}</p>
-                    <div className="mt-2 h-1.5 rounded-full bg-zinc-800"><div className="h-1.5 rounded-full bg-accent" style={{ width: `${(Number(r.val) / 5) * 100}%` }} /></div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Reviews */}
-            <section>
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-foreground">리뷰 ({reviews.length})</h2>
-                <button className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-accent-hover">리뷰 작성</button>
-              </div>
+              <h2 className="text-lg font-bold text-foreground">전체포털서칭 AI통합평가</h2>
+              <p className="mt-1 text-xs text-muted">사랑과전쟁 운영팀 평가</p>
               <div className="mt-4 space-y-4">
                 {reviews.length > 0 ? reviews.map((review) => (
-                  <ReviewCard key={review.id} review={{
-                    id: review.id,
-                    venueId: review.venueId,
-                    author: review.author.nickname,
-                    date: review.createdAt.toISOString().split("T")[0],
-                    verified: review.verified,
-                    content: review.content,
-                    ratings: { atmosphere: review.atmosphere, value: review.value, service: review.service },
-                    overall: review.overall,
-                  }} />
+                  <div key={review.id} className="rounded-lg bg-zinc-900/30 p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">{review.author.nickname}</span>
+                      <span className="text-xs text-muted">{review.createdAt.toISOString().split("T")[0]}</span>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-foreground/80">{review.content}</p>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button className="flex items-center gap-1 rounded-full bg-red-500/10 px-3 py-1.5 text-sm transition-colors hover:bg-red-500/20">
+                        <span>❤️</span>
+                        <span className="text-xs text-red-400">{review.likes}</span>
+                      </button>
+                    </div>
+                  </div>
                 )) : (
-                  <div className="flex h-32 items-center justify-center rounded-xl border border-card-border bg-card-bg">
-                    <p className="text-sm text-muted">아직 리뷰가 없습니다. 첫 리뷰를 작성해보세요!</p>
+                  <div className="flex h-24 items-center justify-center">
+                    <p className="text-sm text-muted">아직 평가가 없습니다.</p>
                   </div>
                 )}
               </div>
@@ -211,10 +189,11 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
           {/* Sidebar */}
           <aside className="w-full shrink-0 lg:w-80">
             <div className="sticky top-24 space-y-6">
+              {/* 즉시연결 전화 */}
               <div className="rounded-xl border border-card-border bg-card-bg p-6">
-                <h3 className="text-sm font-semibold text-foreground">예약 / 문의</h3>
-                <a href={`tel:${venue.phone}`} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-medium text-black transition-colors hover:bg-accent-hover">전화 문의 {venue.phone}</a>
-                <button className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-card-border py-3 text-sm text-muted transition-colors hover:border-accent hover:text-accent">온라인 예약</button>
+                <h3 className="text-sm font-semibold text-foreground">즉시 연결</h3>
+                <a href={`tel:${venue.phone}`} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-medium text-black transition-colors hover:bg-accent-hover">📞 전화 즉시연결</a>
+                <p className="mt-2 text-center text-xs text-muted">{venue.phone}</p>
               </div>
 
               <div className="overflow-hidden rounded-xl border border-card-border">
@@ -222,18 +201,27 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
                 <div className="bg-card-bg p-3"><p className="text-xs text-muted">{venue.address}</p></div>
               </div>
 
+              {/* 비슷한 업소 - 사진 포함 */}
               {similarVenues.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">비슷한 업소</h3>
                   <div className="mt-3 space-y-3">
                     {similarVenues.map((v) => (
-                      <Link key={v.id} href={`/venue/${v.id}`} className="group block rounded-xl border border-card-border bg-card-bg p-4 transition-all hover:border-accent/40">
-                        <h4 className="text-sm font-medium text-foreground group-hover:text-accent">{v.name}</h4>
-                        <p className="mt-1 text-xs text-muted">{v.region} {v.district}</p>
-                        <div className="mt-1 flex items-center gap-1">
-                          <span className="text-xs text-accent">★ {v.rating}</span>
-                          <span className="text-[10px] text-muted">({v.reviewCount})</span>
-                          <span className="ml-auto text-xs text-muted">{v.priceRange}</span>
+                      <Link key={v.id} href={`/venue/${v.id}`} className="group flex items-center gap-3 rounded-xl border border-card-border bg-card-bg p-3 transition-all hover:border-accent/40">
+                        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-zinc-800 to-zinc-900">
+                          {v.images[0] ? (
+                            <img src={v.images[0]} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-lg opacity-30">📸</div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-foreground group-hover:text-accent truncate">{v.name}</h4>
+                          <p className="mt-0.5 text-xs text-muted">{v.region} {v.district}</p>
+                          <div className="mt-0.5 flex items-center gap-1">
+                            <span className="text-xs text-accent">★ {v.rating}</span>
+                            <span className="text-[10px] text-muted">({v.reviewCount})</span>
+                          </div>
                         </div>
                       </Link>
                     ))}

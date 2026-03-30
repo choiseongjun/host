@@ -4,16 +4,15 @@ import Link from "next/link";
 import { useState } from "react";
 
 const navItems = [
-  { name: "룸살롱", href: "/category/room-salon" },
-  { name: "바/라운지", href: "/category/bar-lounge" },
-  { name: "노래방", href: "/category/karaoke" },
-  { name: "클럽", href: "/category/club" },
-  { name: "호스트바", href: "/category/host-bar" },
-  { name: "중년노래방", href: "/category/middle-age-karaoke" },
-  { name: "마사지", href: "/category/massage" },
-  { name: "구인구직", href: "/jobs" },
+  { name: "서울 룸살롱", href: "/category/room-salon" },
+  { name: "서울 바", href: "/category/bar-lounge" },
+  { name: "서울 노래방", href: "/category/karaoke" },
+  { name: "서울 클럽", href: "/category/club" },
+  { name: "서울 호스트바", href: "/category/host-bar" },
+  { name: "서울 중년노래방", href: "/category/middle-age-karaoke" },
+  { name: "서울 감성마사지/스웨디시", href: "/category/massage" },
   { name: "커뮤니티", href: "/community" },
-  { name: "실시간", href: "/feed" },
+  { name: "실시간 목소리", href: "/feed" },
 ];
 
 export default function Header() {
@@ -28,12 +27,12 @@ export default function Header() {
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-1 lg:flex">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-card-bg hover:text-foreground"
+              className="rounded-lg px-2.5 py-2 text-xs text-muted transition-colors hover:bg-card-bg hover:text-foreground"
             >
               {item.name}
             </Link>
@@ -63,7 +62,7 @@ export default function Header() {
 
         {/* Mobile Menu Button */}
         <button
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-card-border md:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-card-border lg:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
         >
           <span className="text-lg">{mobileOpen ? "✕" : "☰"}</span>
@@ -72,7 +71,7 @@ export default function Header() {
 
       {/* Mobile Nav */}
       {mobileOpen && (
-        <nav className="border-t border-card-border bg-background px-4 py-4 md:hidden">
+        <nav className="border-t border-card-border bg-background px-4 py-4 lg:hidden">
           {navItems.map((item) => (
             <Link
               key={item.href}

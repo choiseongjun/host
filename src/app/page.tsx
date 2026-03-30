@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import VenueCard from "@/components/VenueCard";
-import JobCard from "@/components/JobCard";
+import AdBannerSlider from "@/components/AdBannerSlider";
 
 // mock 타입 호환을 위한 변환
 function toMockVenue(v: Record<string, unknown>) {
@@ -28,71 +28,38 @@ function toMockVenue(v: Record<string, unknown>) {
   };
 }
 
-function toMockJob(j: Record<string, unknown>) {
-  return {
-    id: j.id as string,
-    type: (j.type as string) === "HIRING" ? "구인" as const : "구직" as const,
-    title: j.title as string,
-    category: j.category as string,
-    region: j.region as string,
-    district: (j.district as string) || "",
-    salary: j.salary as string,
-    workHours: (j.workHours as string) || "",
-    gender: (j.gender as string) || "",
-    age: (j.age as string) || "",
-    description: j.description as string,
-    requirements: j.requirements as string[],
-    contact: j.contact as string,
-    author: j.author as string,
-    date: new Date(j.createdAt as string).toISOString().split("T")[0],
-    isUrgent: j.isUrgent as boolean,
-    isPremium: j.isPremium as boolean,
-  };
-}
-
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [bannerVenues, premiumVenues, recentVenues, liveFeed, hotPosts, latestJobs] = await Promise.all([
-    prisma.venue.findMany({ where: { isBanner: true, isApproved: true }, take: 4 }),
+  const [bannerVenues, premiumVenues, recentVenues, liveFeed, hotPosts] = await Promise.all([
+    prisma.venue.findMany({ where: { isBanner: true, isApproved: true }, take: 6 }),
     prisma.venue.findMany({ where: { isPremium: true, isApproved: true }, orderBy: { rating: "desc" }, take: 4 }),
     prisma.venue.findMany({ where: { isApproved: true }, orderBy: { createdAt: "desc" }, take: 8 }),
     prisma.feedItem.findMany({ where: { isLive: true }, include: { venue: { select: { name: true, category: true } } }, orderBy: { createdAt: "desc" }, take: 4 }),
     prisma.post.findMany({ where: { isPinned: false }, orderBy: { commentCount: "desc" }, include: { author: { select: { nickname: true } } }, take: 5 }),
-    prisma.job.findMany({ where: { status: "ACTIVE" }, orderBy: { createdAt: "desc" }, take: 3 }),
   ]);
 
   const categories = [
-    { name: "룸살롱", slug: "room-salon", icon: "🥂" },
-    { name: "바/라운지", slug: "bar-lounge", icon: "🍸" },
-    { name: "노래방", slug: "karaoke", icon: "🎤" },
-    { name: "클럽", slug: "club", icon: "🎵" },
-    { name: "호스트바", slug: "host-bar", icon: "🌙" },
-    { name: "중년노래방", slug: "middle-age-karaoke", icon: "🎶" },
-    { name: "마사지", slug: "massage", icon: "💆" },
+    { name: "서울 룸살롱", slug: "room-salon", icon: "🥂" },
+    { name: "서울 바", slug: "bar-lounge", icon: "🍸" },
+    { name: "서울 노래방", slug: "karaoke", icon: "🎤" },
+    { name: "서울 클럽", slug: "club", icon: "🎵" },
+    { name: "서울 호스트바", slug: "host-bar", icon: "🌙" },
+    { name: "서울 중년노래방", slug: "middle-age-karaoke", icon: "🎶" },
+    { name: "서울 감성마사지/스웨디시", slug: "massage", icon: "💆" },
   ];
-
-  const postCategoryMap: Record<string, { label: string; color: string }> = {
-    RECOMMEND: { label: "추천/질문", color: "bg-blue-500/20 text-blue-400" },
-    REVIEW: { label: "후기", color: "bg-green-500/20 text-green-400" },
-    MEETUP: { label: "모임", color: "bg-purple-500/20 text-purple-400" },
-    FREE: { label: "자유", color: "bg-zinc-500/20 text-zinc-400" },
-    INFO: { label: "정보", color: "bg-yellow-500/20 text-yellow-400" },
-  };
 
   return (
     <div>
-      {/* Hero Section */}
+      {/* Hero Section - 검색창만 표시 */}
       <section className="relative overflow-hidden border-b border-card-border">
         <div className="absolute inset-0 bg-gradient-to-b from-accent/5 via-transparent to-transparent" />
-        <div className="relative mx-auto max-w-7xl px-4 py-20 text-center">
+        <div className="relative mx-auto max-w-7xl px-4 py-16 text-center">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
             <span className="text-accent">사랑과</span>전쟁
           </h1>
-          <p className="mx-auto mt-4 max-w-md text-base text-muted">
-            밤이 시작되는 곳
-            <br />
-            검증된 업소 정보와 실제 리뷰를 확인하세요
+          <p className="mx-auto mt-3 max-w-lg text-sm text-muted">
+            &ldquo;사랑과전쟁&rdquo;통해서 연락드립니다 라고 꼭 말씀해주셔야 우대됩니다.
           </p>
           <div className="mx-auto mt-8 flex max-w-lg gap-2">
             <input
@@ -107,31 +74,41 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Banner Ads */}
+      {/* 광고 배너 슬라이드 */}
       {bannerVenues.length > 0 && (
         <section className="border-b border-card-border bg-card-bg">
           <div className="mx-auto max-w-7xl px-4 py-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {bannerVenues.map((venue) => (
-                <Link key={venue.id} href={`/venue/${venue.id}`} className="group relative overflow-hidden rounded-xl border border-accent/20 bg-gradient-to-r from-accent/10 to-transparent p-6 transition-all hover:border-accent/40">
-                  <span className="absolute right-3 top-3 rounded bg-accent/20 px-2 py-0.5 text-[10px] text-accent">AD</span>
-                  <h3 className="text-lg font-bold text-foreground group-hover:text-accent">{venue.name}</h3>
-                  <p className="mt-1 text-sm text-muted">{venue.region} {venue.district} · {venue.category}</p>
-                  <p className="mt-2 line-clamp-2 text-sm text-muted">{venue.description}</p>
-                  <div className="mt-3 flex items-center gap-2">
-                    <span className="text-sm text-accent">★ {venue.rating}</span>
-                    <span className="text-xs text-muted">리뷰 {venue.reviewCount}개</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <AdBannerSlider banners={bannerVenues.map((v) => ({
+              id: v.id,
+              name: v.name,
+              description: v.description || "",
+              region: v.region,
+              district: v.district,
+              category: v.category,
+              rating: v.rating,
+              images: v.images,
+            }))} />
           </div>
         </section>
       )}
 
-      {/* Categories */}
+      {/* 프리미엄 인기업체 - 최상단 (제휴사) */}
       <section className="mx-auto max-w-7xl px-4 py-12">
-        <h2 className="text-xl font-bold text-foreground">카테고리</h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">프리미엄 인기업체</h2>
+            <p className="mt-1 text-sm text-muted">제휴사 추천 업체를 만나보세요</p>
+          </div>
+          <Link href="/search" className="text-sm text-accent hover:text-accent-hover">전체보기 →</Link>
+        </div>
+        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {premiumVenues.map((v) => <VenueCard key={v.id} venue={toMockVenue(v as Record<string, unknown>)} />)}
+        </div>
+      </section>
+
+      {/* 카테고리 (서울 놀이동산) */}
+      <section className="mx-auto max-w-7xl px-4 py-12">
+        <h2 className="text-xl font-bold text-foreground">서울 놀이동산</h2>
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
           {categories.map((cat) => (
             <Link key={cat.slug} href={`/category/${cat.slug}`} className="group rounded-xl border border-card-border bg-card-bg p-5 text-center transition-all hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5">
@@ -142,13 +119,27 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Live Feed + Community */}
+      {/* 정보제공 소개업체 (최근 등록) */}
+      <section className="mx-auto max-w-7xl px-4 py-12">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">정보제공 소개업체</h2>
+            <p className="mt-1 text-sm text-muted">새로 등록된 업소를 확인하세요</p>
+          </div>
+          <Link href="/search" className="text-sm text-accent hover:text-accent-hover">전체보기 →</Link>
+        </div>
+        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {recentVenues.map((v) => <VenueCard key={v.id} venue={toMockVenue(v as Record<string, unknown>)} />)}
+        </div>
+      </section>
+
+      {/* 실시간 목소리 + 커뮤니티 */}
       <section className="mx-auto max-w-7xl px-4 py-12">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-foreground">실시간 피드</h2>
+                <h2 className="text-xl font-bold text-foreground">실시간 목소리</h2>
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
                   <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
@@ -169,7 +160,7 @@ export default async function Home() {
                   <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-muted">{item.content}</p>
                 </Link>
               ))}
-              {liveFeed.length === 0 && <p className="text-sm text-muted py-8 text-center">실시간 피드가 없습니다.</p>}
+              {liveFeed.length === 0 && <p className="text-sm text-muted py-8 text-center">실시간 목소리가 없습니다.</p>}
             </div>
           </div>
 
@@ -180,15 +171,11 @@ export default async function Home() {
             </div>
             <div className="mt-4 space-y-2">
               {hotPosts.map((post, i) => {
-                const cat = postCategoryMap[post.category] || postCategoryMap.FREE;
                 return (
                   <Link key={post.id} href={`/community/${post.id}`} className="group flex items-center gap-4 rounded-xl border border-card-border bg-card-bg p-4 transition-all hover:border-accent/40">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-accent">{i + 1}</span>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${cat.color}`}>{cat.label}</span>
-                        <h3 className="truncate text-sm text-foreground group-hover:text-accent">{post.title}</h3>
-                      </div>
+                      <h3 className="truncate text-sm text-foreground group-hover:text-accent">{post.title}</h3>
                       <div className="mt-1 flex gap-3 text-[10px] text-muted">
                         <span>{post.author.nickname}</span>
                         <span>❤️ {post.likes}</span>
@@ -201,48 +188,6 @@ export default async function Home() {
               {hotPosts.length === 0 && <p className="text-sm text-muted py-8 text-center">게시글이 없습니다.</p>}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Premium Listings */}
-      <section className="mx-auto max-w-7xl px-4 py-12">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-foreground">프리미엄 업소</h2>
-            <p className="mt-1 text-sm text-muted">검증된 프리미엄 업소를 만나보세요</p>
-          </div>
-          <Link href="/search" className="text-sm text-accent hover:text-accent-hover">전체보기 →</Link>
-        </div>
-        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {premiumVenues.map((v) => <VenueCard key={v.id} venue={toMockVenue(v as Record<string, unknown>)} />)}
-        </div>
-      </section>
-
-      {/* Recent Listings */}
-      <section className="mx-auto max-w-7xl px-4 py-12">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-foreground">최근 등록</h2>
-            <p className="mt-1 text-sm text-muted">새로 등록된 업소를 확인하세요</p>
-          </div>
-          <Link href="/search" className="text-sm text-accent hover:text-accent-hover">전체보기 →</Link>
-        </div>
-        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {recentVenues.map((v) => <VenueCard key={v.id} venue={toMockVenue(v as Record<string, unknown>)} />)}
-        </div>
-      </section>
-
-      {/* Jobs Section */}
-      <section className="mx-auto max-w-7xl px-4 py-12">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-foreground">구인구직</h2>
-            <p className="mt-1 text-sm text-muted">최신 구인·구직 정보를 확인하세요</p>
-          </div>
-          <Link href="/jobs" className="text-sm text-accent hover:text-accent-hover">전체보기 →</Link>
-        </div>
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {latestJobs.map((j) => <JobCard key={j.id} job={toMockJob(j as Record<string, unknown>)} />)}
         </div>
       </section>
 

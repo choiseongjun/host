@@ -4,14 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const menuItems = [
-  { name: "대시보드", href: "/mypage", icon: "📊" },
-  { name: "프로필 수정", href: "/mypage/edit", icon: "👤" },
-  { name: "찜 목록", href: "/mypage/favorites", icon: "❤️" },
-  { name: "내 리뷰", href: "/mypage/reviews", icon: "✍️" },
-  { name: "내 구인구직", href: "/mypage/jobs", icon: "💼" },
-  { name: "업소 관리", href: "/mypage/venue", icon: "🏢" },
-  { name: "메뉴 관리", href: "/mypage/venue/menu", icon: "📋" },
-  { name: "가격표 관리", href: "/mypage/venue/price", icon: "💰" },
+  { name: "마이페이지", href: "/mypage", icon: "👤" },
+  { name: "내 즐겨찾기", href: "/mypage/favorites", icon: "❤️" },
 ];
 
 export default function MypageSidebar() {
@@ -25,18 +19,8 @@ export default function MypageSidebar() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-accent/30 to-accent/10 text-2xl">
             👤
           </div>
-          <h3 className="mt-3 text-sm font-semibold text-foreground">강남유저123</h3>
+          <h3 className="mt-3 text-sm font-semibold text-foreground">내 프로필</h3>
           <p className="mt-0.5 text-xs text-muted">일반회원</p>
-          <div className="mt-3 flex justify-center gap-4 border-t border-card-border pt-3">
-            <div className="text-center">
-              <p className="text-sm font-semibold text-accent">12</p>
-              <p className="text-[10px] text-muted">리뷰</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-semibold text-accent">8</p>
-              <p className="text-[10px] text-muted">찜</p>
-            </div>
-          </div>
         </div>
 
         {/* Navigation */}
