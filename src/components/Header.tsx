@@ -58,6 +58,14 @@ export default function Header() {
           </Link>
           {user ? (
             <>
+              {user.username === "admin" && (
+                <Link
+                  href="/venue/register"
+                  className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-accent-hover"
+                >
+                  업소 등록
+                </Link>
+              )}
               <Link
                 href="/mypage"
                 className="rounded-lg border border-card-border px-4 py-2 text-sm text-muted transition-colors hover:border-accent hover:text-accent"
@@ -121,6 +129,15 @@ export default function Header() {
           </Link>
           {user ? (
             <>
+              {user.username === "admin" && (
+                <Link
+                  href="/venue/register"
+                  className="block rounded-lg px-3 py-3 text-sm text-accent font-medium"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  업소 등록
+                </Link>
+              )}
               <Link
                 href="/mypage"
                 className="block rounded-lg px-3 py-3 text-sm text-muted"
