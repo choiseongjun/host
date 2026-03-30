@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import ImageGallery from "@/components/ImageGallery";
+import AdBanner from "@/components/AdBanner";
 
 export default async function VenuePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -158,6 +159,9 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
               </section>
             )}
 
+            {/* 광고 배너 */}
+            <AdBanner />
+
             {/* 전체포털서칭 AI통합평가 - 운영팀 수기 평가 + ❤️ 반응 */}
             <section className="rounded-xl border border-card-border bg-card-bg p-6">
               <h2 className="text-lg font-bold text-foreground">전체포털서칭 AI통합평가</h2>
@@ -200,6 +204,9 @@ export default async function VenuePage({ params }: { params: Promise<{ id: stri
                 <div className="flex h-48 items-center justify-center bg-zinc-900"><span className="text-2xl opacity-30">🗺️</span></div>
                 <div className="bg-card-bg p-3"><p className="text-xs text-muted">{venue.address}</p></div>
               </div>
+
+              {/* 사이드바 광고 */}
+              <AdBanner variant="sidebar" />
 
               {/* 비슷한 업소 - 사진 포함 */}
               {similarVenues.length > 0 && (

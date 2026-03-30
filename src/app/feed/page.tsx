@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import AdBanner from "@/components/AdBanner";
 
 export default function FeedPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,6 +31,9 @@ export default function FeedPage() {
       </section>
 
       <div className="mx-auto max-w-3xl px-4 py-6 space-y-4">
+        {/* 상단 광고 */}
+        <AdBanner />
+
         {loading ? (
           <div className="flex h-48 items-center justify-center"><p className="text-muted">로딩 중...</p></div>
         ) : items.length > 0 ? items.map((item) => {

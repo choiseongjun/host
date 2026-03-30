@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import VenueCard from "@/components/VenueCard";
+import AdBanner from "@/components/AdBanner";
 
 const categories = [
   { name: "룸살롱", slug: "room-salon", icon: "🥂" },
@@ -75,11 +76,17 @@ export default function SearchPage() {
                 </label>
               </div>
               <button onClick={() => { setKeyword(""); setSelectedCategory(""); setSelectedRegion(""); setLateNightOnly(false); }} className="w-full rounded-lg border border-card-border py-2 text-sm text-muted transition-colors hover:border-accent hover:text-accent">필터 초기화</button>
+
+              {/* 사이드바 광고 */}
+              <AdBanner variant="sidebar" />
+              <AdBanner variant="sidebar" />
             </div>
           </aside>
 
-          <div className="flex-1">
-            <p className="mb-6 text-sm text-muted">검색 결과 <span className="font-medium text-foreground">{total}</span>개</p>
+          <div className="flex-1 space-y-6">
+            {/* 검색 결과 상단 광고 */}
+            <AdBanner />
+            <p className="text-sm text-muted">검색 결과 <span className="font-medium text-foreground">{total}</span>개</p>
             {loading ? (
               <div className="flex h-64 items-center justify-center"><p className="text-muted">로딩 중...</p></div>
             ) : venues.length > 0 ? (

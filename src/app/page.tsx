@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import VenueCard from "@/components/VenueCard";
 import AdBannerSlider from "@/components/AdBannerSlider";
+import AdBanner from "@/components/AdBanner";
 
 // mock 타입 호환을 위한 변환
 function toMockVenue(v: Record<string, unknown>) {
@@ -119,6 +120,11 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* 광고 배너 */}
+      <section className="mx-auto max-w-7xl px-4">
+        <AdBanner />
+      </section>
+
       {/* 정보제공 소개업체 (최근 등록) */}
       <section className="mx-auto max-w-7xl px-4 py-12">
         <div className="flex items-center justify-between">
@@ -131,6 +137,11 @@ export default async function Home() {
         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {recentVenues.map((v) => <VenueCard key={v.id} venue={toMockVenue(v as Record<string, unknown>)} />)}
         </div>
+      </section>
+
+      {/* 광고 배너 */}
+      <section className="mx-auto max-w-7xl px-4">
+        <AdBanner variant="inline" />
       </section>
 
       {/* 실시간 목소리 + 커뮤니티 */}

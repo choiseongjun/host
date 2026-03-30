@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import AdBanner from "@/components/AdBanner";
 
 const categoryTabs = [
   { key: "latest", label: "최신" },
@@ -57,6 +58,9 @@ export default function CommunityPage() {
       </section>
 
       <div className="mx-auto max-w-5xl px-4 py-6 space-y-3">
+        {/* 상단 광고 */}
+        <AdBanner />
+
         {loading ? (
           <div className="flex h-48 items-center justify-center"><p className="text-muted">로딩 중...</p></div>
         ) : activeTab === "vote" ? (

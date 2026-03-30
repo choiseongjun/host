@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import VenueCard from "@/components/VenueCard";
+import AdBanner from "@/components/AdBanner";
 
 const categoriesMap: Record<string, { name: string; icon: string; description: string }> = {
   "room-salon": { name: "룸살롱", icon: "🥂", description: "프라이빗 룸에서 즐기는 프리미엄 서비스" },
@@ -55,16 +56,33 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 space-y-6">
+        {/* 상단 광고 배너 */}
+        <AdBanner />
+
         {venues.length > 0 ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {venues.map((v) => <VenueCard key={v.id} venue={toMockVenue(v as Record<string, unknown>)} />)}
-          </div>
+          <>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {venues.slice(0, 8).map((v) => <VenueCard key={v.id} venue={toMockVenue(v as Record<string, unknown>)} />)}
+            </div>
+
+            {/* 중간 인라인 광고 */}
+            {venues.length > 8 && <AdBanner variant="inline" />}
+
+            {venues.length > 8 && (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {venues.slice(8).map((v) => <VenueCard key={v.id} venue={toMockVenue(v as Record<string, unknown>)} />)}
+              </div>
+            )}
+          </>
         ) : (
           <div className="flex h-64 items-center justify-center rounded-xl border border-card-border bg-card-bg">
             <p className="text-muted">등록된 업소가 없습니다.</p>
           </div>
         )}
+
+        {/* 하단 광고 배너 */}
+        <AdBanner />
       </div>
     </div>
   );
