@@ -7,6 +7,73 @@ export default function SignupPage() {
   const [signupType, setSignupType] = useState<"user" | "business">("user");
   const [step, setStep] = useState(1);
   const [agreed, setAgreed] = useState({ terms: false, privacy: false, marketing: false });
+  const [form, setForm] = useState({
+    username: "",
+    email: "",
+    password: "",
+    passwordConfirm: "",
+    nickname: "",
+    businessNumber: "",
+    businessName: "",
+    representative: "",
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  function updateForm(key: string, value: string) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSubmit() {
+    setError("");
+
+    if (!form.username || !form.email || !form.password || !form.nickname) {
+      setError("모든 필수 항목을 입력해주세요.");
+      return;
+    }
+    if (form.password !== form.passwordConfirm) {
+      setError("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+    if (form.password.length < 8) {
+      setError("비밀번호는 8자 이상이어야 합니다.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: form.username,
+          email: form.email,
+          password: form.password,
+          nickname: form.nickname,
+          role: signupType === "business" ? "BUSINESS" : "USER",
+          marketing: agreed.marketing,
+          ...(signupType === "business" && {
+            businessNumber: form.businessNumber,
+            businessName: form.businessName,
+            representative: form.representative,
+          }),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "회원가입에 실패했습니다.");
+        return;
+      }
+
+      setStep(3);
+    } catch {
+      setError("서버 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="flex min-h-[calc(100vh-64px)] items-center justify-center px-4 py-16">
@@ -131,18 +198,19 @@ export default function SignupPage() {
                 {signupType === "user" ? "회원 정보 입력" : "업소 사장님 정보 입력"}
               </h2>
 
+              {error && (
+                <div className="rounded-lg bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-foreground">아이디</label>
-                <div className="mt-1.5 flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="아이디 입력 (영문, 숫자 4~20자)"
-                    className="flex-1 rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
-                  />
-                  <button className="shrink-0 rounded-lg border border-card-border px-4 py-3 text-sm text-muted transition-colors hover:border-accent hover:text-accent">
-                    중복확인
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  placeholder="아이디 입력 (영문, 숫자 4~20자)"
+                  value={form.username}
+                  onChange={(e) => updateForm("username", e.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
+                />
               </div>
 
               <div>
@@ -150,6 +218,8 @@ export default function SignupPage() {
                 <input
                   type="email"
                   placeholder="이메일 입력"
+                  value={form.email}
+                  onChange={(e) => updateForm("email", e.target.value)}
                   className="mt-1.5 w-full rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
                 />
               </div>
@@ -158,7 +228,9 @@ export default function SignupPage() {
                 <label className="block text-sm font-medium text-foreground">비밀번호</label>
                 <input
                   type="password"
-                  placeholder="비밀번호 (영문, 숫자, 특수문자 포함 8자 이상)"
+                  placeholder="비밀번호 (8자 이상)"
+                  value={form.password}
+                  onChange={(e) => updateForm("password", e.target.value)}
                   className="mt-1.5 w-full rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
                 />
               </div>
@@ -168,6 +240,8 @@ export default function SignupPage() {
                 <input
                   type="password"
                   placeholder="비밀번호 재입력"
+                  value={form.passwordConfirm}
+                  onChange={(e) => updateForm("passwordConfirm", e.target.value)}
                   className="mt-1.5 w-full rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
                 />
               </div>
@@ -177,36 +251,10 @@ export default function SignupPage() {
                 <input
                   type="text"
                   placeholder="닉네임 입력 (2~10자)"
+                  value={form.nickname}
+                  onChange={(e) => updateForm("nickname", e.target.value)}
                   className="mt-1.5 w-full rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground">휴대폰 번호</label>
-                <div className="mt-1.5 flex gap-2">
-                  <input
-                    type="tel"
-                    placeholder="010-0000-0000"
-                    className="flex-1 rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
-                  />
-                  <button className="shrink-0 rounded-lg border border-card-border px-4 py-3 text-sm text-muted transition-colors hover:border-accent hover:text-accent">
-                    인증요청
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground">인증번호</label>
-                <div className="mt-1.5 flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="인증번호 6자리"
-                    className="flex-1 rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
-                  />
-                  <button className="shrink-0 rounded-lg border border-card-border px-4 py-3 text-sm text-muted transition-colors hover:border-accent hover:text-accent">
-                    확인
-                  </button>
-                </div>
               </div>
 
               {signupType === "business" && (
@@ -215,22 +263,21 @@ export default function SignupPage() {
                   <h3 className="text-sm font-semibold text-foreground">사업자 정보</h3>
                   <div>
                     <label className="block text-sm font-medium text-foreground">사업자등록번호</label>
-                    <div className="mt-1.5 flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="000-00-00000"
-                        className="flex-1 rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
-                      />
-                      <button className="shrink-0 rounded-lg border border-card-border px-4 py-3 text-sm text-muted transition-colors hover:border-accent hover:text-accent">
-                        인증
-                      </button>
-                    </div>
+                    <input
+                      type="text"
+                      placeholder="000-00-00000"
+                      value={form.businessNumber}
+                      onChange={(e) => updateForm("businessNumber", e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-foreground">상호명</label>
                     <input
                       type="text"
                       placeholder="상호명 입력"
+                      value={form.businessName}
+                      onChange={(e) => updateForm("businessName", e.target.value)}
                       className="mt-1.5 w-full rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
                     />
                   </div>
@@ -239,6 +286,8 @@ export default function SignupPage() {
                     <input
                       type="text"
                       placeholder="대표자명 입력"
+                      value={form.representative}
+                      onChange={(e) => updateForm("representative", e.target.value)}
                       className="mt-1.5 w-full rounded-lg border border-card-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
                     />
                   </div>
@@ -253,10 +302,11 @@ export default function SignupPage() {
                   이전
                 </button>
                 <button
-                  onClick={() => setStep(3)}
-                  className="flex-1 rounded-xl bg-accent py-3 text-sm font-medium text-black transition-colors hover:bg-accent-hover"
+                  onClick={handleSubmit}
+                  disabled={loading}
+                  className="flex-1 rounded-xl bg-accent py-3 text-sm font-medium text-black transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  가입하기
+                  {loading ? "처리 중..." : "가입하기"}
                 </button>
               </div>
             </div>
