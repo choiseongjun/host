@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const priceLevel = searchParams.get("priceLevel");
   const lateNight = searchParams.get("lateNight");
   const keyword = searchParams.get("keyword");
-  const sort = searchParams.get("sort") || "rating";
+  const sort = searchParams.get("sort") || "newest";
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
 

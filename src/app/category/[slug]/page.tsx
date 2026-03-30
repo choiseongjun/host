@@ -32,7 +32,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
 
   const venues = await prisma.venue.findMany({
     where: { categorySlug: slug, isApproved: true },
-    orderBy: [{ isPremium: "desc" }, { rating: "desc" }],
+    orderBy: [{ isPremium: "desc" }, { createdAt: "desc" }],
   });
 
   return (

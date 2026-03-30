@@ -33,7 +33,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const [bannerVenues, premiumVenues, recentVenues, liveFeed, hotPosts] = await Promise.all([
     prisma.venue.findMany({ where: { isBanner: true, isApproved: true }, take: 6 }),
-    prisma.venue.findMany({ where: { isPremium: true, isApproved: true }, orderBy: { rating: "desc" }, take: 4 }),
+    prisma.venue.findMany({ where: { isPremium: true, isApproved: true }, orderBy: { createdAt: "desc" }, take: 4 }),
     prisma.venue.findMany({ where: { isApproved: true }, orderBy: { createdAt: "desc" }, take: 8 }),
     prisma.feedItem.findMany({ where: { isLive: true }, include: { venue: { select: { name: true, category: true } } }, orderBy: { createdAt: "desc" }, take: 4 }),
     prisma.post.findMany({ where: { isPinned: false }, orderBy: { commentCount: "desc" }, include: { author: { select: { nickname: true } } }, take: 5 }),
